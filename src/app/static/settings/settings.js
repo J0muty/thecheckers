@@ -131,6 +131,50 @@ document.addEventListener('DOMContentLoaded', () => {
         showNotification(okMsg, 'success');
         setTimeout(() => location.reload(), 700);
     });
+    
+    const delBtn = document.getElementById('delete-account-btn');
+    const delModal = document.getElementById('delete-modal');
+    const delClose = document.getElementById('delete-close');
+    const delForm = document.getElementById('delete-form');
+    const stepLogin = document.getElementById('delete-step-login');
+    const stepCode = document.getElementById('delete-step-code');
+    const stepConfirm = document.getElementById('delete-step-confirm');
+    const nextLogin = document.getElementById('del-next');
+    const nextCode = document.getElementById('del-next-code');
+    const confirmBtn = document.getElementById('del-confirm');
+
+    function showDelModal() {
+        delModal.classList.remove('hidden');
+        stepLogin.classList.remove('hidden');
+        if (stepCode) stepCode.classList.add('hidden');
+        stepConfirm.classList.add('hidden');
+    }
+    function hideDelModal() {
+        delModal.classList.add('hidden');
+    }
+
+    if (delBtn) delBtn.addEventListener('click', e => { e.preventDefault(); showDelModal(); });
+    if (delClose) delClose.addEventListener('click', hideDelModal);
+    if (nextLogin) nextLogin.addEventListener('click', e => {
+        e.preventDefault();
+        if (stepCode) {
+            stepLogin.classList.add('hidden');
+            stepCode.classList.remove('hidden');
+        } else {
+            stepLogin.classList.add('hidden');
+            stepConfirm.classList.remove('hidden');
+        }
+    });
+    if (nextCode) nextCode.addEventListener('click', e => {
+        e.preventDefault();
+        stepCode.classList.add('hidden');
+        stepConfirm.classList.remove('hidden');
+    });
+    if (confirmBtn) confirmBtn.addEventListener('click', () => {
+        showNotification('Функционал ещё не реализован');
+        hideDelModal();
+    });
+    if (delForm) delForm.addEventListener('submit', e => { e.preventDefault(); hideDelModal(); });
 
     ['change-password-btn','change-email-btn'].forEach(id => {
         const btn = document.getElementById(id);
