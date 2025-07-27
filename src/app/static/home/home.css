@@ -302,3 +302,14 @@ input[type="radio"]:focus-visible + .radio-card {
 .dark-mode .toast { background: #374151; color: #F9FAFB; }
 .dark-mode .toast.success { background: #14532d; color: #dcfce7; }
 .dark-mode .toast.error { background: #7f1d1d; color: #fee2e2; }
+
+input:focus,
+input:focus-visible{
+    outline:none;
+}
+input:-webkit-autofill,
+input:autofill{
+    box-shadow:0 0 0 1000px var(--surface-color) inset !important;
+    -webkit-text-fill-color:var(--text-color) !important;
+    color:var(--text-color) !important;
+}
