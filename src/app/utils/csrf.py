@@ -12,7 +12,4 @@ async def get_csrf_token(request: Request) -> str:
 
 async def validate_csrf(request: Request, token: str) -> bool:
     session_token = request.session.get(CSRF_SESSION_KEY)
-    ok = bool(session_token and token and secrets.compare_digest(session_token, token))
-    if ok:
-        request.session.pop(CSRF_SESSION_KEY, None)
-    return ok
+    return bool(session_token and token and secrets.compare_digest(session_token, token))

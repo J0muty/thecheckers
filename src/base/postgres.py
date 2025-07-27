@@ -47,9 +47,14 @@ def connect(method):
             try:
                 result = await method(*args, **kwargs, session=session)
                 return result
+            except ValueError as e:
+                await session.rollback()
+                raise e
             except Exception as e:
                 await session.rollback()
-                raise Exception(f'Ошибка при работе с базой данных: {repr(e)} \nargs:\n{args}')
+                raise Exception(
+                    f'Ошибка при работе с базой данных: {repr(e)} \nargs:\n{args}'
+                )
     return wrapper
 
 @connect
