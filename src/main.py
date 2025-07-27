@@ -49,5 +49,16 @@ app.include_router(chat_router)
 app.mount("/static", static_files, name="static")
 
 
+logging.getLogger("watchfiles").setLevel(logging.CRITICAL)
+logging.getLogger("watchfiles.main").disabled = True
+logging.getLogger("uvicorn.access").disabled = True
+
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="127.0.0.1", port=1337, reload=True)
+    uvicorn.run(
+        "main:app",
+        host="127.0.0.1",
+        port=1337,
+        reload=True,
+        reload_dirs=["src"],
+        reload_excludes=[".venv", ".git", "__pycache__"]
+    )
