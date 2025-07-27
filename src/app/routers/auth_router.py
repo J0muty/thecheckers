@@ -33,7 +33,13 @@ async def process_login(
         token = await get_csrf_token(request)
         return templates.TemplateResponse(
             "login.html",
-            {"request": request, "error": "CSRF validation failed", "require_2fa": False, "csrf_token": token},
+            {
+                "request": request,
+                "error": "CSRF validation failed",
+                "login": login,
+                "email": email,
+                "csrf_token": token,
+            },
             status_code=status.HTTP_400_BAD_REQUEST,
         )
     try:
@@ -139,16 +145,19 @@ async def process_register(
         err = str(ve)
         login_taken = err in ("EXISTS_LOGIN", "EXISTS_BOTH")
         email_taken = err in ("EXISTS_EMAIL", "EXISTS_BOTH")
-        msg_parts = []
-        if login_taken:
-            msg_parts.append("Данный никнейм уже занят")
-        if email_taken:
-            msg_parts.append("Данная почта уже занята")
+        if login_taken and email_taken:
+            error_msg = "Данный никнейм и почта уже существуют"
+        elif login_taken:
+            error_msg = "Данный никнейм уже существует"
+        elif email_taken:
+            error_msg = "Данная почта уже существует"
+        else:
+            error_msg = "Неизвестная ошибка"
         return templates.TemplateResponse(
             "register.html",
             {
                 "request": request,
-                "error": " и ".join(msg_parts),
+                "error": error_msg,
                 "login": login,
                 "email": email,
                 "login_taken": login_taken,
@@ -161,7 +170,13 @@ async def process_register(
         token = await get_csrf_token(request)
         return templates.TemplateResponse(
             "register.html",
-            {"request": request, "error": "Внутренняя ошибка при создании пользователя. Попробуйте позже.", "csrf_token": token},
+            {
+                "request": request,
+                "error": "Не удалось создать пользователя. Попробуйте позже.",
+                "login": login,
+                "email": email,
+                "csrf_token": token,
+            },
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
     request.session["user_id"] = user.id
