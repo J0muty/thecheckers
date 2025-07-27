@@ -3,20 +3,24 @@
   "configurations": [
     {
       "name": "FastAPI (uvicorn)",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "uvicorn",
       "args": ["src.main:app", "--reload"],
       "env": { "PYTHONPATH": "${workspaceFolder}" },
-      "cwd": "${workspaceFolder}"
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": true
     },
     {
       "name": "python -m src.main",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "src.main",
       "env": { "PYTHONPATH": "${workspaceFolder}" },
-      "cwd": "${workspaceFolder}"
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": true
     }
   ]
 }
