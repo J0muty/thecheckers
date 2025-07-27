@@ -1,0 +1,96 @@
+{% extends 'base.html' %}
+
+{% block title %}Главная страница{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="/static/home/home.css">
+{% endblock %}
+
+{% block content %}
+    <div class="home-wrapper">
+        <div class="home-grid">
+            <button id="singleBtn" class="btn" type="button">Одиночная игра</button>
+            <button id="netBtn" class="btn" type="button">Сетевая игра</button>
+        </div>
+        <div class="status-container" id="statusContainer">
+            <div class="status-box" id="netStatus">
+                <div class="status-title" id="netTitle">Сетевая игра</div>
+                <div class="timer" id="netTimer">00:00</div>
+                <button id="netReturn">Вернуться</button>
+                <button id="netLeave">Покинуть</button>
+            </div>
+            <div class="status-box" id="singleStatus">
+                <div class="status-title">Игра с ботом</div>
+                <div class="timer" id="singleTimer">00:00</div>
+                <button id="singleReturn">Вернуться</button>
+                <button id="singleLeave">Покинуть</button>
+            </div>
+             <div class="status-box" id="waitStatus">
+                 <div class="status-title">Поиск игры</div>
+                 <div class="timer" id="waitTimer">00:00</div>
+                 <button id="waitReturn">Вернуться</button>
+                 <button id="waitLeave">Отменить</button>
+             </div>
+             <div class="status-box" id="lobbyStatus">
+                 <div class="status-title">Лобби</div>
+                 <button id="lobbyReturn">Вернуться</button>
+                 <button id="lobbyLeave">Покинуть</button>
+             </div>
+          </div>
+      </div>
+    <div id="leaveModal" class="modal-overlay">
+        <div class="modal">
+            <p>Вы уверены, что хотите покинуть игру?</p>
+            <div class="modal-buttons">
+                <button id="leaveYes" class="btn-red">Да</button>
+                <button id="leaveNo" class="btn-green">Нет</button>
+            </div>
+        </div>
+    </div>
+    <div id="singleModal" class="modal-overlay" role="dialog" aria-modal="true">
+        <div class="modal fancy-modal" tabindex="-1">
+            <h2 class="modal-title">Выберите сложность и цвет</h2>
+            <form class="modal-options" id="singleForm">
+                <fieldset class="radio-group">
+                    <legend>Сложность</legend>
+                    <input type="radio" id="diff-easy" name="difficulty" value="easy" checked>
+                    <label for="diff-easy" class="radio-card">Легко</label>
+                    <input type="radio" id="diff-medium" name="difficulty" value="medium">
+                    <label for="diff-medium" class="radio-card">Средне</label>
+                    <input type="radio" id="diff-hard" name="difficulty" value="hard">
+                    <label for="diff-hard" class="radio-card">Сложно</label>
+                </fieldset>
+                <fieldset class="radio-group">
+                    <legend>Цвет</legend>
+                    <input type="radio" id="cl-white" name="spcolor" value="white" checked>
+                    <label for="cl-white" class="radio-card"><span class="swatch swatch-white"></span> Белый</label>
+                    <input type="radio" id="cl-black" name="spcolor" value="black">
+                    <label for="cl-black" class="radio-card"><span class="swatch swatch-black"></span> Черный</label>
+                </fieldset>
+            </form>
+            <div class="modal-buttons">
+                <button id="startSingleBtn" class="btn" type="button">Начать игру</button>
+                <button id="singleCloseBtn" class="btn" type="button">Отменить</button>
+            </div>
+        </div>
+    </div>
+    <div id="netModal" class="modal-overlay" role="dialog" aria-modal="true">
+        <div class="modal fancy-modal" tabindex="-1">
+            <h2 class="modal-title">Выберите режим</h2>
+            <div class="modal-menu">
+                <button id="netSearchBtn" class="btn" type="button">Поиск</button>
+                <button id="netLobbyBtn" class="btn" type="button">Лобби</button>
+                <button id="netBoardBtn" class="btn" type="button">Одна доска</button>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script>
+        const userId = "{{ user_id }}";
+        window.globalSessionToken = "{{ request.session.session_token or '' }}";
+    </script>
+    <script src="/static/base/session_ws.js"></script>
+    <script src="/static/home/home.js"></script>
+{% endblock %}

@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Поиск соперника</title>
+    <script>
+        if (localStorage.theme === 'dark') {
+            document.documentElement.classList.add('dark-mode');
+        }
+    </script>
+    <link rel="stylesheet" href="/static/waiting/waiting.css">
+</head>
+<body>
+
+    <div class="waiting-container">
+        <div class="spinner"></div>
+        <div class="text">Ожидание соперника...</div>
+        <div class="timer" id="waitTimer">00:00</div>
+        <button id="cancelBtn">Покинуть очередь</button>
+    </div>
+    <script>
+        const userId = "{{ user_id }}";
+        window.globalSessionToken = "{{ request.session.session_token or '' }}";
+    </script>
+    <script src="/static/waiting/waiting.js"></script>
+    <script src="/static/base/toast.js"></script>
+    <script src="/static/base/session_ws.js"></script>
+</body>
+</html>

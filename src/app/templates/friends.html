@@ -1,0 +1,79 @@
+{% extends "profile_base.html" %}
+{% block title %}Друзья{% endblock %}
+{% block extra_css %}
+    <link rel="stylesheet" href="/static/profile/profile.css">
+    <link rel="stylesheet" href="/static/friends/friends.css">
+    <link rel="stylesheet" href="/static/chat/chat.css">
+{% endblock %}
+{% block content %}
+    <div class="friends-wrapper">
+        <input id="friend-search" placeholder="Поиск" class="search-input">
+
+        <div id="results" class="friends-section" style="display:none;">
+            <h2>Результаты</h2>
+            <ul id="results-list"></ul>
+        </div>
+
+        <div id="requests" class="friends-section" style="display:none;">
+            <h2>Заявки</h2>
+            <ul id="requests-list"></ul>
+        </div>
+
+        <div id="friends" class="friends-section">
+            <h2>Друзья</h2>
+            <ul id="friends-list"></ul>
+        </div>
+    </div>
+
+    <template id="friend-item-template">
+        <li>
+            <span class="friend-name"></span>
+            <div class="menu-wrapper">
+                <button class="icon-btn menu-btn">
+                    <i class="fa-solid fa-ellipsis-vertical"></i>
+                </button>
+                <div class="dropdown">
+                    <div class="dropdown-item msg"><i class="fa-solid fa-comment-dots"></i> Написать</div>
+                    <div class="dropdown-item remove"><i class="fa-solid fa-trash"></i> Удалить</div>
+                    <div class="dropdown-item block"><i class="fa-solid fa-ban"></i> Заблокировать</div>
+                </div>
+            </div>
+        </li>
+    </template>
+
+    <button id="chat-toggle" class="fab-btn">
+        <i class="fa-solid fa-comments"></i>
+    </button>
+
+    <div id="chat-panel" class="chat-panel">
+        <div class="chat-header">
+            <button id="chat-back" class="icon-btn" style="display:none;">
+                <i class="fa-solid fa-arrow-left"></i>
+            </button>
+            <h3 id="chat-title">Чаты</h3>
+        </div>
+        <ul id="chat-list"></ul>
+        <div id="chat-window" class="chat-window">
+            <div class="chat-messages"></div>
+            <form class="chat-form">
+                <input class="chat-input" autocomplete="off">
+                <button type="submit">Отправить</button>
+            </form>
+        </div>
+    </div>
+{% endblock %}
+{% block extra_js %}
+    <script>
+        const userId = "{{ user_id }}";
+    </script>
+    <script src="/static/profile/profile.js"></script>
+    <script src="/static/friends/friends.js"></script>
+    <script type="module">
+        import { initChat } from '/static/chat/chat.js';
+        window.chatModule = initChat(document.getElementById('chat-panel'), userId);
+    </script>
+    <script src="/static/base/session_ws.js"></script>
+    <script>
+        window.globalSessionToken = "{{ request.session.session_token or '' }}";
+    </script>
+{% endblock %}

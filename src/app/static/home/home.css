@@ -1,0 +1,304 @@
+@import url('https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap');
+
+:root {
+    --background-color: #f3f4f6;
+    --surface-color: #ffffff;
+    --accent-color: #3B82F6;
+    --button-color: #2563EB;
+    --text-color: #111827;
+    --secondary-text-color: #6B7280;
+    --font-family: 'Rubik', sans-serif;
+    --border-radius: 12px;
+}
+
+.dark-mode {
+    --background-color: #1F2937;
+    --surface-color: #111827;
+    --button-color: #1E40AF;
+    --text-color: #F9FAFB;
+    --secondary-text-color: #9CA3AF;
+    --accent-color: #3B82F6;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html, body {
+    height: 100%;
+    background: var(--background-color);
+    color: var(--text-color);
+    font-family: var(--font-family);
+    transition: background 0.3s ease, color 0.3s ease;
+}
+
+body {
+    overflow-x: hidden;
+}
+
+.home-wrapper {
+    height: calc(100vh - 60px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    position: relative;
+}
+
+.home-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    row-gap: 25px;
+    width: 100%;
+    max-width: 400px;
+    margin: 0 auto;
+}
+
+.btn {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 1rem;
+    background: var(--button-color);
+    color: #fff;
+    text-decoration: none;
+    font-size: 1.15rem;
+    border: none;
+    border-radius: var(--border-radius);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+    transition: transform 0.3s, box-shadow 0.3s, background-color 0.3s;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 12px 24px rgba(0,0,0,0.15);
+    background: var(--accent-color);
+}
+
+.status-container {
+    position: absolute;
+    top: 35px;
+    right: 5px;
+    display: none;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+    z-index: 1000;
+}
+
+.status-box {
+    background: var(--surface-color);
+    color: var(--text-color);
+    padding: 8px 12px;
+    border-radius: var(--border-radius);
+    border: 2px solid var(--secondary-text-color);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    display: none;
+    align-items: center;
+    gap: 8px;
+}
+
+.status-title {
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.status-box .timer {
+    min-width: 50px;
+    text-align: center;
+    font-size: 0.9rem;
+}
+
+.status-box button {
+    padding: 4px 8px;
+    border: none;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    background: var(--accent-color);
+    color: #fff;
+}
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+}
+
+.modal-overlay.active {
+    display: flex;
+}
+
+.modal {
+    background: var(--surface-color);
+    color: var(--text-color);
+    padding: 20px;
+    border-radius: var(--border-radius);
+    border: 2px solid var(--secondary-text-color);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    text-align: center;
+}
+
+.modal-buttons {
+    margin-top: 20px;
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.modal-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.btn-red,
+.btn-green {
+    padding: 8px 16px;
+    border: none;
+    color: #fff;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+}
+
+.btn-red {
+    background: #ef4444;
+}
+
+.btn-green {
+    background: #10b981;
+}
+
+.fancy-modal {
+    max-width: 480px;
+    width: 92%;
+    padding: 32px 24px;
+    border: none;
+    box-shadow: 0 6px 25px rgba(0,0,0,0.15), 0 0 0 4px color-mix(in srgb, var(--accent-color) 25%, transparent);
+    animation: pop 220ms ease-out both;
+}
+
+@keyframes pop {
+    0% {
+        transform: scale(0.9);
+        opacity: 0;
+    }
+}
+
+.modal-title {
+    font-size: 1.4rem;
+    margin-bottom: 24px;
+}
+
+.modal-options {
+    display: grid;
+    gap: 32px;
+}
+
+.radio-group {
+    display: grid;
+    gap: 16px;
+    border: 0;
+}
+
+.radio-group legend {
+    font-weight: 600;
+    margin-bottom: 16px; /* увеличенный отступ под заголовком */
+}
+
+input[type="radio"] {
+    display: none; /* скрыт но кликается через label */
+}
+
+.radio-card {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    border: 2px solid var(--secondary-text-color);
+    border-radius: var(--border-radius);
+    background: var(--surface-color);
+    cursor: pointer;
+    transition: background 0.25s, border-color 0.25s, box-shadow 0.25s;
+}
+
+input[type="radio"]:checked + .radio-card {
+    background: var(--accent-color);
+    color: #fff;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 4px color-mix(in srgb, #3b82f6 40%, transparent);
+}
+
+input[type="radio"]:focus-visible + .radio-card {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent-color) 60%, transparent);
+}
+
+.swatch {
+    inline-size: 18px;
+    block-size: 18px;
+    border-radius: 50%;
+    border: 2px solid var(--secondary-text-color);
+}
+
+.swatch-white {
+    background: #fff;
+}
+
+.swatch-black {
+    background: #000;
+}
+
+.dark-mode .radio-card {
+    background: var(--surface-color);
+}
+
+.dark-mode input[type="radio"]:checked + .radio-card {
+    background: var(--accent-color);
+    color: #fff;
+}
+
+
+.toast-container {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    z-index: 2000;
+}
+
+.toast {
+    min-width: 240px;
+    padding: 12px 18px;
+    border-radius: var(--border-radius);
+    background: var(--surface-color);
+    color: var(--text-color);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, .15);
+    font-size: .95rem;
+    animation: toast-slide-in .3s ease,
+               toast-fade-out .3s ease forwards var(--toast-duration);
+}
+.toast.success { background: #dcfce7; color: #166534; }
+.toast.error { background: #fee2e2; color: #991b1b; }
+
+@keyframes toast-slide-in {
+    from { opacity: 0; transform: translateX(100%); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes toast-fade-out {
+    to { opacity: 0; transform: translateX(100%); }
+}
+
+.dark-mode .toast { background: #374151; color: #F9FAFB; }
+.dark-mode .toast.success { background: #14532d; color: #dcfce7; }
+.dark-mode .toast.error { background: #7f1d1d; color: #fee2e2; }

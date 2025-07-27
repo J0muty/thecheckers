@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Лобби</title>
+    <script>if(localStorage.theme==='dark'){document.documentElement.classList.add('dark-mode')}</script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/lobby/lobby.css">
+    <link rel="stylesheet" href="/static/chat/chat.css">
+</head>
+<body>
+    <div class="lobby-wrapper">
+        <main class="lobby-card">
+            <h2 style="text-align:center;font-size:1.6rem;font-weight:600">Лобби</h2>
+            <ul id="players" class="players-list"></ul>
+            <form id="colorForm" class="radio-group">
+                <label><input type="radio" name="color" value="white">Белый</label>
+                <label><input type="radio" name="color" value="black">Чёрный</label>
+            </form>
+            <div class="buttons">
+                <button id="startBtn" type="button">Начать игру</button>
+                <button id="leaveBtn" type="button">Покинуть</button>
+            </div>
+            <section class="invite-section">
+                <h3>Пригласить друзей</h3>
+                <table id="friendsTable" class="friends-table"></table>
+                <div class="buttons" style="gap:12px">
+                    <button id="loadMoreBtn" type="button">Загрузить ещё</button>
+                    <button id="hideBtn" type="button" style="display:none;">Скрыть</button>
+                </div>
+            </section>
+        </main>
+        <aside id="lobbyChat" class="chat-window open lobby-chat">
+            <div class="chat-messages"></div>
+            <form class="chat-form">
+                <input class="chat-input" autocomplete="off">
+                <button type="submit">Отправить</button>
+            </form>
+        </aside>
+    </div>
+    <script>
+        const lobbyId="{{ lobby_id }}";
+        const userId="{{ user_id }}";
+        const hostId="{{ host_id }}";
+        window.globalSessionToken = "{{ request.session.session_token or '' }}";
+    </script>
+    <script src="/static/lobby/lobby.js"></script>
+    <script src="/static/lobby/lobby_chat.js"></script>
+    <script src="/static/base/toast.js"></script>
+    <script src="/static/base/session_ws.js"></script>
+</body>
+</html>

@@ -1,0 +1,169 @@
+@import url('https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap');
+
+:root {
+    --background-color: #f3f4f6;
+    --surface-color: #ffffff;
+    --accent-color:  #3B82F6;
+    --button-color:  #2563EB;
+    --text-color:    #111827;
+    --secondary-text-color: #6B7280;
+    --font-family: 'Rubik', sans-serif;
+    --border-radius: 12px;
+}
+
+.dark-mode {
+    --background-color: #1F2937;
+    --surface-color:   #111827;
+    --button-color:    #1E40AF;
+    --text-color:      #F9FAFB;
+    --secondary-text-color: #9CA3AF;
+    --accent-color:    #3B82F6;
+}
+
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html, body {
+    height: 100%;
+    background: var(--background-color);
+    color: var(--text-color);
+    font-family: var(--font-family);
+    transition: background 0.3s ease, color 0.3s ease;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.container {
+    position: relative;
+    background: var(--surface-color);
+    color: var(--text-color);
+    padding: 40px;
+    border-radius: var(--border-radius);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    width: 100%;
+    max-width: 400px;
+}
+
+.back-arrow {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    font-size: 20px;
+    color: var(--secondary-text-color);
+    text-decoration: none;
+    z-index: 2;
+}
+
+.back-arrow:hover {
+    color: var(--accent-color);
+}
+
+h1 {
+    text-align: center;
+    margin-bottom: 30px;
+    font-size: 24px;
+}
+
+.input-group {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.input-group input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--secondary-text-color);
+    border-radius: var(--border-radius);
+    background: transparent;
+    color: var(--text-color);
+    font-size: 16px;
+}
+
+.input-group.has-toggle input {
+    padding-right: 40px;
+}
+
+.input-group label {
+    position: absolute;
+    top: 50%;
+    left: 10px;
+    transform: translateY(-50%);
+    color: var(--secondary-text-color);
+    pointer-events: none;
+    transition: all 0.3s ease;
+    background: var(--surface-color);
+    padding: 0 4px;
+    z-index: 1;
+}
+
+.input-group input:focus + label,
+.input-group input:not(:placeholder-shown) + label {
+    top: 0;
+    left: 10px;
+    font-size: 12px;
+    color: var(--accent-color);
+}
+
+.input-group input:focus {
+    border-color: var(--accent-color);
+    outline: none;
+    box-shadow: 0 0 5px var(--accent-color);
+}
+
+.toggle-password {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+}
+
+.toggle-password svg {
+    width: 24px;
+    height: 24px;
+    stroke: var(--secondary-text-color);
+}
+
+.toggle-password .eye-slash {
+    display: none;
+}
+
+button {
+    width: 100%;
+    padding: 10px;
+    background: var(--button-color);
+    color: #ffffff;
+    border: none;
+    border-radius: var(--border-radius);
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+button:hover {
+    background: var(--accent-color);
+    transform: translateY(-1px);
+}
+
+button:active {
+    transform: translateY(0);
+}
+
+p {
+    text-align: center;
+    margin-top: 20px;
+    color: var(--secondary-text-color);
+}
+
+p a {
+    color: var(--accent-color);
+    text-decoration: none;
+}
+
+p a:hover {
+    text-decoration: underline;
+}

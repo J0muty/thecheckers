@@ -1,0 +1,67 @@
+{% extends "profile_base.html" %}
+{% block title %}Профиль{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="/static/profile/profile.css">
+{% endblock %}
+{% block content %}
+    <div class="user-card">
+        <div class="avatar">{{ username|string|first|upper }}</div>
+        <h1 class="username">{{ username }}</h1>
+    </div>
+    <h2 class="section-title">Статистика</h2>
+    <div class="stats-wrapper">
+        <div class="left-panel">
+            <div class="stat-card total">
+                <div class="value" id="total-games">0</div>
+                <div class="label">Всего игр</div>
+            </div>
+            <div class="sub-stats">
+                <div class="stat-card">
+                    <div class="value" id="wins">0</div>
+                    <div class="label">Победы</div>
+                </div>
+                <div class="stat-card">
+                    <div class="value" id="draws">0</div>
+                    <div class="label">Ничьи</div>
+                </div>
+                <div class="stat-card">
+                    <div class="value" id="losses">0</div>
+                    <div class="label">Поражения</div>
+                </div>
+            </div>
+        </div>
+        <div class="right-panel">
+            <div class="stat-card rank-card">
+                <img src="/static/images/profile/ranks/Новичок.png" alt="rank" class="rank-icon">
+                <div class="value" id="rank">Новичок</div>
+            </div>
+            <div class="stat-card elo-card">
+                <div class="value" id="elo">0</div>
+                <div class="label">ELO</div>
+            </div>
+        </div>
+    </div>
+    <h2 class="section-title">История игр</h2>
+    <div class="history-card">
+                <div class="history-wrapper">
+            <table class="history-table">
+                <thead>
+                <tr>
+                    <th>Дата</th>
+                    <th>Режим</th>
+                    <th>Исход</th>
+                    <th>ELO</th>
+                </tr>
+                </thead>
+                <tbody id="history-body"></tbody>
+            </table>
+        </div>
+        <div class="history-controls">
+            <button id="load-more-btn">Загрузить ещё</button>
+            <button id="hide-btn" style="display: none;">Скрыть</button>
+        </div>
+    </div>
+{% endblock %}
+{% block extra_js %}
+<script src="/static/profile/profile.js"></script>
+{% endblock %}

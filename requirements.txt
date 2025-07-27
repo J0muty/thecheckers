@@ -1,0 +1,16 @@
+uvicorn[standard]~=0.34.0
+fastapi~=0.115.12
+starlette~=0.46.1
+jinja2
+itsdangerous
+httpx~=0.28.1
+SQLAlchemy~=2.0.40
+asyncio~=3.4.3
+pytest-asyncio
+asyncpg
+redis~=5.2.1
+bcrypt~=4.3.0
+python-dotenv~=1.1.0
+greenlet
+python-multipart
+pydantic~=2.11.4
