@@ -46,14 +46,19 @@
             <button type="submit">Подтвердить</button>
         </form>
         {% endif %}
-        {% if error %}
-        <p style="color:#f87171;margin-top:12px;text-align:center">{{ error }}</p>
-        {% endif %}
     </main>
+    <script src="/static/base/toast.js"></script>
     <script src="/static/login/login.js"></script>
     <script>
         window.globalSessionToken = "{{ request.session.session_token or '' }}";
     </script>
     <script src="/static/base/session_ws.js"></script>
+    {% if error %}
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            showNotification("{{ error }}", 'error');
+        });
+    </script>
+    {% endif %}
 </body>
 </html>

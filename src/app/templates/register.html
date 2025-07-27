@@ -17,19 +17,14 @@
             <i class="fa-solid fa-arrow-left"></i>
         </a>
         <h1>Регистрация</h1>
-        {% if error %}
-            <div class="error-message">
-                {{ error }}
-            </div>
-        {% endif %}
         <form action="/register" method="post">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <div class="input-group">
-                <input type="text" id="login" name="login" placeholder=" " required>
+                <input type="text" id="login" name="login" placeholder=" " required value="{{ login|default('') }}" class="{% if login_taken %}error{% endif %}">
                 <label for="login">Логин</label>
             </div>
             <div class="input-group">
-                <input type="email" id="email" name="email" placeholder=" " required>
+                <input type="email" id="email" name="email" placeholder=" " required value="{{ email|default('') }}" class="{% if email_taken %}error{% endif %}">
                 <label for="email">Электронная почта</label>
             </div>
             <div class="input-group has-toggle">
@@ -52,10 +47,18 @@
         </form>
         <p>Уже зарегистрированы? <a href="/login">Войти</a></p>
     </main>
+    <script src="/static/base/toast.js"></script>
     <script src="/static/register/register.js"></script>
     <script>
         window.globalSessionToken = "{{ request.session.session_token or '' }}";
     </script>
+        {% if error %}
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            showNotification("{{ error }}", 'error');
+        });
+    </script>
+    {% endif %}
     <script src="/static/base/session_ws.js"></script>
 </body>
 </html>

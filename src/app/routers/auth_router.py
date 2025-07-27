@@ -136,9 +136,25 @@ async def process_register(
         user = await create_user(login=login, email=email, password=password)
     except ValueError as ve:
         token = await get_csrf_token(request)
+        err = str(ve)
+        login_taken = err in ("EXISTS_LOGIN", "EXISTS_BOTH")
+        email_taken = err in ("EXISTS_EMAIL", "EXISTS_BOTH")
+        msg_parts = []
+        if login_taken:
+            msg_parts.append("Данный никнейм уже занят")
+        if email_taken:
+            msg_parts.append("Данная почта уже занята")
         return templates.TemplateResponse(
             "register.html",
-            {"request": request, "error": str(ve), "login": login, "email": email, "csrf_token": token},
+            {
+                "request": request,
+                "error": " и ".join(msg_parts),
+                "login": login,
+                "email": email,
+                "login_taken": login_taken,
+                "email_taken": email_taken,
+                "csrf_token": token,
+            },
             status_code=status.HTTP_400_BAD_REQUEST,
         )
     except Exception:
