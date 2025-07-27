@@ -1,0 +1,22 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "FastAPI (uvicorn)",
+      "type": "python",
+      "request": "launch",
+      "module": "uvicorn",
+      "args": ["src.main:app", "--reload"],
+      "env": { "PYTHONPATH": "${workspaceFolder}" },
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "python -m src.main",
+      "type": "python",
+      "request": "launch",
+      "module": "src.main",
+      "env": { "PYTHONPATH": "${workspaceFolder}" },
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}
