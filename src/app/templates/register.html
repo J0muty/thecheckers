@@ -22,10 +22,12 @@
             <div class="input-group">
                 <input type="text" id="login" name="login" placeholder=" " required value="{{ login|default('') }}" class="{% if login_taken %}error{% endif %}">
                 <label for="login">Логин</label>
+                <div class="input-error" id="login-error"></div>
             </div>
             <div class="input-group">
                 <input type="email" id="email" name="email" placeholder=" " required value="{{ email|default('') }}" class="{% if email_taken %}error{% endif %}">
                 <label for="email">Электронная почта</label>
+                <div class="input-error" id="email-error"></div>
             </div>
             <div class="input-group has-toggle">
                 <input type="password" id="password" name="password" placeholder=" " required>

@@ -56,7 +56,7 @@ def connect(method):
 async def create_user(login: str, email: str, password: str, session: AsyncSession) -> User:
     login_norm = login.strip().lower()
     email_norm = email.strip().lower()
-    
+
     login_q = await session.execute(select(User).where(User.login == login_norm))
     login_exists = login_q.scalar_one_or_none() is not None
     email_q = await session.execute(select(User).where(User.email == email_norm))
@@ -107,6 +107,20 @@ async def authenticate_user(login_or_email: str, password: str, session: AsyncSe
     if user and verify_password(password, user.password):
         return user
     return None
+
+@connect
+async def check_user_exists(session: AsyncSession, login: str | None = None, email: str | None = None) -> tuple[bool, bool]:
+    login_exists = False
+    email_exists = False
+    if login is not None:
+        login_norm = login.strip().lower()
+        q = await session.execute(select(User).where(User.login == login_norm))
+        login_exists = q.scalar_one_or_none() is not None
+    if email is not None:
+        email_norm = email.strip().lower()
+        q = await session.execute(select(User).where(User.email == email_norm))
+        email_exists = q.scalar_one_or_none() is not None
+    return login_exists, email_exists
 
 @connect
 async def get_user_login(user_id: int, session: AsyncSession) -> str | None:

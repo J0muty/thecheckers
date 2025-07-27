@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request, Form, status
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from src.settings.settings import templates
-from src.base.postgres import create_user, authenticate_user, get_2fa_info
+from src.base.postgres import create_user, authenticate_user, get_2fa_info, check_user_exists
 from src.app.utils.session_manager import create_session, delete_session
 from src.app.utils.totp import verify_code
 from src.app.utils.csrf import get_csrf_token, validate_csrf
@@ -179,3 +179,11 @@ async def logout(request: Request):
         await delete_session(int(uid), token)
     request.session.clear()
     return RedirectResponse("/", status_code=status.HTTP_302_FOUND)
+
+@auth_router.get("/api/check_user")
+async def api_check_user(login: str | None = None, email: str | None = None):
+    try:
+        login_exists, email_exists = await check_user_exists(login=login, email=email)
+        return JSONResponse({"login_exists": login_exists, "email_exists": email_exists})
+    except Exception:
+        return JSONResponse({"error": "internal"}, status_code=500)
