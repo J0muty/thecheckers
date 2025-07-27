@@ -196,7 +196,21 @@ input:autofill{
 .input-error.visible{opacity:1;max-height:40px;}
 input.error{border-color:#ef4444;}
 input.error+label{color:#ef4444;}
-
+.input-group input.error {
+    border-color: #ef4444;
+    box-shadow: 0 0 5px #ef4444;
+}
+.input-group input.error + label {
+    color: #ef4444;
+}
+.input-group input.error:focus {
+    border-color: #ef4444;
+    box-shadow: 0 0 5px #ef4444;
+}
+.input-group input.error:focus + label {
+    color: #ef4444;
+}
+.input-group.error label { color: #ef4444; }
 .toast-container{position:fixed;top:16px;right:16px;display:flex;flex-direction:column;gap:12px;z-index:2000;}
 .toast{min-width:240px;padding:12px 18px;border-radius:var(--border-radius);background:var(--surface-color);color:var(--text-color);box-shadow:0 8px 20px rgba(0,0,0,.15);font-size:.95rem;animation:toast-slide-in .3s ease,toast-fade-out .3s ease forwards var(--toast-duration);}
 .toast.success{background:#dcfce7;color:#166534;}

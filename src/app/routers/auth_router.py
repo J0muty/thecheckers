@@ -111,8 +111,14 @@ async def process_login_2fa(
 @auth_router.get("/register", response_class=HTMLResponse, name="register")
 async def register_page(request: Request):
     token = await get_csrf_token(request)
+    form_state = request.session.pop("reg_form_state", {})
     return templates.TemplateResponse(
-        "register.html", {"request": request, "csrf_token": token}
+        "register.html",
+        {
+            "request": request,
+            "csrf_token": token,
+            **form_state,
+        },
     )
 
 @auth_router.post("/register", response_class=HTMLResponse, name="register_post")
@@ -125,23 +131,24 @@ async def process_register(
     csrf_token: str = Form(...),
 ):
     if not await validate_csrf(request, csrf_token):
-        token = await get_csrf_token(request)
-        return templates.TemplateResponse(
-            "register.html",
-            {"request": request, "error": "CSRF validation failed", "csrf_token": token},
-            status_code=status.HTTP_400_BAD_REQUEST,
-        )
+        request.session["reg_form_state"] = {
+            "error": "CSRF validation failed",
+            "login": login,
+            "email": email,
+        }
+        return RedirectResponse("/register", status_code=status.HTTP_303_SEE_OTHER)
+
     if password != confirm_password:
-        token = await get_csrf_token(request)
-        return templates.TemplateResponse(
-            "register.html",
-            {"request": request, "error": "Пароли не совпадают.", "login": login, "email": email, "csrf_token": token},
-            status_code=status.HTTP_400_BAD_REQUEST,
-        )
+        request.session["reg_form_state"] = {
+            "error": "Пароли не совпадают.",
+            "login": login,
+            "email": email,
+        }
+        return RedirectResponse("/register", status_code=status.HTTP_303_SEE_OTHER)
+
     try:
         user = await create_user(login=login, email=email, password=password)
     except ValueError as ve:
-        token = await get_csrf_token(request)
         err = str(ve)
         login_taken = err in ("EXISTS_LOGIN", "EXISTS_BOTH")
         email_taken = err in ("EXISTS_EMAIL", "EXISTS_BOTH")
@@ -153,38 +160,30 @@ async def process_register(
             error_msg = "Данная почта уже существует"
         else:
             error_msg = "Неизвестная ошибка"
-        return templates.TemplateResponse(
-            "register.html",
-            {
-                "request": request,
-                "error": error_msg,
-                "login": login,
-                "email": email,
-                "login_taken": login_taken,
-                "email_taken": email_taken,
-                "csrf_token": token,
-            },
-            status_code=status.HTTP_400_BAD_REQUEST,
-        )
+
+        request.session["reg_form_state"] = {
+            "error": error_msg,
+            "login": login,
+            "email": email,
+            "login_taken": login_taken,
+            "email_taken": email_taken,
+        }
+        return RedirectResponse("/register", status_code=status.HTTP_303_SEE_OTHER)
+
     except Exception:
-        token = await get_csrf_token(request)
-        return templates.TemplateResponse(
-            "register.html",
-            {
-                "request": request,
-                "error": "Не удалось создать пользователя. Попробуйте позже.",
-                "login": login,
-                "email": email,
-                "csrf_token": token,
-            },
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        )
+        request.session["reg_form_state"] = {
+            "error": "Не удалось создать пользователя. Попробуйте позже.",
+            "login": login,
+            "email": email,
+        }
+        return RedirectResponse("/register", status_code=status.HTTP_303_SEE_OTHER)
+
+    # успех
     request.session["user_id"] = user.id
     token = await create_session(user.id, request.headers.get("User-Agent", ""), _get_ip(request))
     request.session["session_token"] = token
     request.session["flash"] = {"message": "Вы успешно зарегистрированы", "type": "success"}
-    response = RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
-    return response
+    return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
 
 @auth_router.get("/logout")
 async def logout(request: Request):
