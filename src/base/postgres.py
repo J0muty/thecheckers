@@ -285,3 +285,32 @@ async def disable_2fa(user_id: int, session: AsyncSession) -> None:
 async def get_2fa_info(user_id: int, session: AsyncSession) -> dict:
     user = await session.get(User, user_id)
     return {"enabled": bool(user.twofa_enabled), "secret": user.twofa_secret}
+
+@connect
+async def delete_user_account(user_id: int, session: AsyncSession) -> None:
+    await session.execute(
+        text("DELETE FROM friends WHERE user_id = :uid OR friend_id = :uid"),
+        {"uid": user_id},
+    )
+    await session.execute(
+        text(
+            "DELETE FROM friend_requests WHERE from_user_id = :uid OR to_user_id = :uid"
+        ),
+        {"uid": user_id},
+    )
+    await session.execute(
+        text("DELETE FROM game_history WHERE user_id = :uid"), {"uid": user_id}
+    )
+    await session.execute(
+        text(
+            "DELETE FROM recorded_games WHERE white_id = :uid OR black_id = :uid"
+        ),
+        {"uid": user_id},
+    )
+    await session.execute(
+        text("DELETE FROM user_stats WHERE user_id = :uid"), {"uid": user_id}
+    )
+    user = await session.get(User, user_id)
+    if user:
+        await session.delete(user)
+    await session.commit()

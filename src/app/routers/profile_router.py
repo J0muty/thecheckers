@@ -6,12 +6,15 @@ from src.base.postgres import (
     get_user_stats, get_user_login, get_friends, get_friend_requests,
     search_users, send_friend_request, cancel_friend_request,
     remove_friend, get_user_history, get_2fa_info,
-    set_2fa_secret, enable_2fa, disable_2fa
+    set_2fa_secret, enable_2fa, disable_2fa,
+    authenticate_user, delete_user_account
 )
 from src.app.routers.ws_router import friends_manager
 from src.app.utils.session_manager import (
     get_sessions, delete_session, delete_all_sessions
 )
+from src.base.redis import redis_client, CHAT_PREFIX, get_user_chats
+from src.base.lobby_redis import get_user_lobby, remove_player, get_user_invites, remove_user_invite
 from src.app.utils.totp import generate_secret, build_uri, verify_code
 
 profile_router = APIRouter()
@@ -175,4 +178,41 @@ async def api_2fa_disable(request: Request, code: str = Form(...)):
     if not verify_code(info["secret"], code):
         return JSONResponse({"error": "invalid_code"}, status_code=400)
     await disable_2fa(int(user_id))
+    return JSONResponse({"status": "ok"})
+
+@profile_router.post("/api/delete_account")
+async def api_delete_account(
+    request: Request,
+    login: str = Form(...),
+    password: str = Form(...),
+    code: str | None = Form(None),
+):
+    user_id = request.session.get("user_id")
+    if not user_id:
+        return JSONResponse({"error": "unauthorized"}, status_code=401)
+
+    user = await authenticate_user(login, password)
+    if not user or user.id != int(user_id):
+        return JSONResponse({"error": "invalid_credentials"}, status_code=400)
+
+    info = await get_2fa_info(int(user_id))
+    if info["enabled"]:
+        if not code or not verify_code(info["secret"], code):
+            return JSONResponse({"error": "invalid_code"}, status_code=400)
+
+    await delete_all_sessions(int(user_id))
+    chat_ids = await get_user_chats(int(user_id))
+    for cid in chat_ids:
+        await redis_client.delete(f"{CHAT_PREFIX}:{cid}")
+
+    lobby_id = await get_user_lobby(str(user_id))
+    if lobby_id:
+        await remove_player(lobby_id, str(user_id))
+
+    invites = await get_user_invites(str(user_id))
+    for lid in invites.keys():
+        await remove_user_invite(str(user_id), lid)
+
+    await delete_user_account(int(user_id))
+    request.session.clear()
     return JSONResponse({"status": "ok"})

@@ -142,6 +142,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const nextLogin = document.getElementById('del-next');
     const nextCode = document.getElementById('del-next-code');
     const confirmBtn = document.getElementById('del-confirm');
+    const cancelBtn = document.getElementById('del-cancel');
+    const loginInput = document.getElementById('del-login');
+    const passInput = document.getElementById('del-password');
+    const codeInputDel = document.getElementById('del-code');
+
 
     function showDelModal() {
         delModal.classList.remove('hidden');
@@ -170,11 +175,38 @@ document.addEventListener('DOMContentLoaded', () => {
         stepCode.classList.add('hidden');
         stepConfirm.classList.remove('hidden');
     });
-    if (confirmBtn) confirmBtn.addEventListener('click', () => {
-        showNotification('Функционал ещё не реализован');
-        hideDelModal();
+    if (cancelBtn) cancelBtn.addEventListener('click', hideDelModal);
+    if (confirmBtn) confirmBtn.addEventListener('click', async e => {
+        e.preventDefault();
+        const params = new URLSearchParams({
+            login: loginInput.value.trim(),
+            password: passInput.value,
+        });
+        if (codeInputDel) params.append('code', codeInputDel.value.trim());
+        const resp = await fetch('/api/delete_account', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: params
+        });
+        if (resp.ok) {
+            window.location.href = '/';
+        } else {
+            const data = await resp.json().catch(() => ({}));
+            showNotification(data.error || 'Ошибка удаления', 'error');
+            hideDelModal();
+        }
     });
-    if (delForm) delForm.addEventListener('submit', e => { e.preventDefault(); hideDelModal(); });
+    if (delForm) {
+        delForm.addEventListener('submit', e => {
+            e.preventDefault();
+        });
+        stepConfirm.addEventListener('keydown', e => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                hideDelModal();
+            }
+        });
+    }
 
     ['change-password-btn','change-email-btn'].forEach(id => {
         const btn = document.getElementById(id);
