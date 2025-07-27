@@ -1,0 +1,79 @@
+{% extends "profile_base.html" %}
+{% block title %}Настройки{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="/static/profile/profile.css">
+<link rel="stylesheet" href="/static/settings/settings.css">
+{% endblock %}
+{% block content %}
+<div class="settings-wrapper">
+    <h1 class="section-title">Безопасность и учетная запись</h1>
+    <div class="settings-container">
+        <div class="settings-card">
+            <h2>Смена пароля</h2>
+            <div class="input-group">
+                <input type="password" id="current-password" placeholder=" " required>
+                <label for="current-password">Текущий пароль</label>
+            </div>
+            <div class="input-group has-toggle">
+                <input type="password" id="new-password" placeholder=" " required>
+                <label for="new-password">Новый пароль</label>
+                <span class="toggle-password">
+                    <svg class="eye" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    <svg class="eye-slash" viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                </span>
+            </div>
+            <div class="input-group has-toggle">
+                <input type="password" id="confirm-password" placeholder=" " required>
+                <label for="confirm-password">Подтверждение пароля</label>
+                <span class="toggle-password">
+                    <svg class="eye" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    <svg class="eye-slash" viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                </span>
+            </div>
+            <button class="primary-btn" id="change-password-btn">Сменить</button>
+        </div>
+        <div class="settings-card">
+            <h2>Смена email-адреса</h2>
+            <div class="input-group">
+                <input type="email" id="new-email" placeholder=" " required>
+                <label for="new-email">Новый email</label>
+            </div>
+            <button class="primary-btn" id="change-email-btn">Сменить</button>
+        </div>
+        <div class="settings-card">
+            <h2>Двухфакторная аутентификация</h2>
+            {% if twofa_enabled %}
+            <button class="primary-btn" id="disable-2fa-btn">Отключить</button>
+            {% else %}
+            <button class="primary-btn" id="setup-2fa-btn">Настроить</button>
+            {% endif %}
+        </div>
+        <div class="settings-card">
+            <h2>Управление устройствами</h2>
+            <button class="primary-btn" id="logout-all-btn">Выйти со всех сессий</button>
+            <ul class="device-list"></ul>
+        </div>
+    </div>
+</div>
+
+<div id="twofa-modal" class="modal hidden">
+    <div class="modal-content">
+        <span class="modal-close" id="twofa-close">&times;</span>
+        <h3 id="twofa-title">Настройка 2FA</h3>
+        <div id="qrcode"></div>
+        <p class="secret-line"><span id="secret-text"></span></p>
+        <form id="twofa-form">
+            <div class="input-group">
+                <input type="text" id="twofa-code" placeholder=" " maxlength="6" pattern="[0-9]{6}" required>
+                <label for="twofa-code">6-значный код</label>
+            </div>
+            <button class="primary-btn" id="twofa-submit">Подтвердить</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script src="/static/profile/profile.js"></script>
+<script src="/static/settings/settings.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+{% endblock %}

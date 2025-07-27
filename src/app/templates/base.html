@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script>
+        if (localStorage.theme === 'dark') {
+            document.documentElement.classList.add('dark-mode');
+        }
+    </script>
+    <title>{% block title %}TheCheckers{% endblock %}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/base/base.css">
+    {% block extra_css %}{% endblock %}
+    <script>
+        window.globalUserId = "{{ request.session.user_id or '' }}";
+        window.globalSessionToken = "{{ request.session.session_token or '' }}";
+    </script>
+</head>
+<body class="{% block body_class %}{% endblock %}">
+    <header class="header">
+        <div class="logo">TheCheckers</div>
+        <nav class="nav">
+            {% if request.session.user_id %}
+                <div id="notifBell" class="notification-bell">
+                    <i class="fa-solid fa-bell"></i>
+                    <span id="notifCount" class="notification-count" style="display:none"></span>
+                </div>
+                <a href="{{ url_for('profile') }}">Профиль</a>
+            {% else %}
+                <a href="{{ url_for('login') }}">Вход</a>
+                <a href="{{ url_for('register') }}">Регистрация</a>
+            {% endif %}
+        </nav>
+        <div id="notifPanel" class="notification-panel"></div>
+    </header>
+
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer">© 2025 TheCheckers</footer>
+    <script src="/static/base/base.js"></script>
+    <script src="/static/base/toast.js"></script>
+    {% if flash %}
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            const f = {{ flash|tojson }};
+            if (f && f.message) {
+                showNotification(f.message, f.type || 'success');
+            }
+        });
+    </script>
+    {% endif %}
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

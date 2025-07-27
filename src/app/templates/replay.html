@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Просмотр партии</title>
+    <script>
+        if (localStorage.theme === 'dark') {
+            document.documentElement.classList.add('dark-mode');
+        }
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/static/board/board.css">
+    <script>
+        const boardId = "{{ game_id }}";
+        const playerColor = "{{ player_color }}";
+        window.globalSessionToken = "{{ request.session.session_token or '' }}";
+    </script>
+    <script src="/static/board/replay.js" defer></script>
+</head>
+<body>
+    <div class="game-container">
+        <div class="sidebar">
+            <div class="players">
+                <div class="player player1">
+                    <div class="player-name">{{ players.white }}</div>
+                </div>
+                <div class="player player2">
+                    <div class="player-name">{{ players.black }}</div>
+                </div>
+            </div>
+            <div class="history-container">
+                <h2>История ходов</h2>
+                <div class="history-wrapper">
+                    <ul class="history-list" id="historyList"></ul>
+                </div>
+                <a href="/" id="homeButton" class="btn-green" style="display:block; margin-top: 10px; text-align:center;">Главная</a>
+            </div>
+        </div>
+        <div class="board-wrapper">
+            <div class="board-grid" id="board"></div>
+        </div>
+    </div>
+</body>
+<script src="/static/base/session_ws.js"></script>
+</html>

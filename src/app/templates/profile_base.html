@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}Профиль{% endblock %}</title>
+    <script>
+        if (localStorage.theme === 'dark') {
+            document.documentElement.classList.add('dark-mode');
+        }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/static/profile/profile_base.css">
+    {% block extra_css %}{% endblock %}
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        window.globalUserId = "{{ request.session.user_id or '' }}";
+        window.globalSessionToken = "{{ request.session.session_token or '' }}";
+    </script>
+</head>
+<body>
+    <header class="topbar">
+        <button id="sidebarToggle" class="btn-icon"><i class="fa-solid fa-bars"></i></button>
+        <button id="theme-toggle" class="btn-icon"><i class="fa-solid fa-moon" id="theme-icon"></i></button>
+    </header>
+    <aside id="sidebar" class="sidebar">
+        <nav class="sidebar-nav">
+            <a href="/" class="nav-item">
+                <i class="fa-solid fa-house"></i>
+                <span>Главная</span>
+            </a>
+            <a href="/profile" class="nav-item{% if request.url.path == '/profile' %} active{% endif %}">
+                <i class="fa-solid fa-user"></i>
+                <span>Профиль</span>
+            </a>
+            <a href="/profile/friends" class="nav-item{% if request.url.path == '/profile/friends' %} active{% endif %}">
+                <i class="fa-solid fa-user-group"></i>
+                <span>Друзья</span>
+            </a>
+            <a href="/profile/achievements" class="nav-item{% if request.url.path == '/profile/achievements' %} active{% endif %}">
+                <i class="fa-solid fa-trophy"></i>
+                <span>Достижения</span>
+            </a>
+            <a href="/profile/settings" class="nav-item{% if request.url.path == '/profile/settings' %} active{% endif %}">
+                <i class="fa-solid fa-gear"></i>
+                <span>Настройки</span>
+            </a>
+            <a href="/logout" class="nav-item">
+                <i class="fa-solid fa-right-from-bracket"></i>
+                <span>Выход</span>
+            </a>
+        </nav>
+    </aside>
+    <main class="profile-content">
+        {% block content %}{% endblock %}
+    </main>
+    <script src="/static/profile/profile_base.js"></script>
+    <script src="/static/base/toast.js"></script>
+    <script src="/static/base/session_ws.js"></script>
+    <script>
+        window.globalSessionToken = "{{ request.session.session_token or '' }}";
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
