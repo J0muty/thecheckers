@@ -165,6 +165,7 @@ button.green-btn:hover {
   inset: 0;
   background: rgba(0,0,0,0.5);
   display: flex;
+  padding: 16px; 
   justify-content: center;
   align-items: center;
   z-index: 999;
@@ -174,10 +175,11 @@ button.green-btn:hover {
 }
 .modal-content {
   background: var(--surface-color);
-  padding: 32px;
+  padding: 40px 48px;
   border-radius: var(--border-radius);
   width: 100%;
-  max-width: 420px;
+  max-width: 450px;
+  row-gap: 20px;
   position: relative;
 }
 .modal-close {
@@ -203,5 +205,6 @@ button.green-btn:hover {
 .confirm-row {
   display: flex;
   justify-content: space-between;
-  gap: 12px;
+  gap: 8px;
+  margin-top: 20px;
 }
