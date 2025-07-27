@@ -56,9 +56,19 @@ def connect(method):
 async def create_user(login: str, email: str, password: str, session: AsyncSession) -> User:
     login_norm = login.strip().lower()
     email_norm = email.strip().lower()
-    exists = await session.execute(select(User).where((User.login == login_norm) | (User.email == email_norm)))
-    if exists.scalar_one_or_none():
-        raise ValueError("Пользователь с таким логином или почтой уже существует")
+    
+    login_q = await session.execute(select(User).where(User.login == login_norm))
+    login_exists = login_q.scalar_one_or_none() is not None
+    email_q = await session.execute(select(User).where(User.email == email_norm))
+    email_exists = email_q.scalar_one_or_none() is not None
+
+    if login_exists or email_exists:
+        if login_exists and email_exists:
+            raise ValueError("EXISTS_BOTH")
+        if login_exists:
+            raise ValueError("EXISTS_LOGIN")
+        raise ValueError("EXISTS_EMAIL")
+
     pwd_hash = hash_password(password)
     user = User(login=login_norm, email=email_norm, password=pwd_hash)
     session.add(user)
