@@ -112,6 +112,29 @@ button.primary-btn:hover {
 button.primary-btn:active {
   transform: translateY(0);
 }
+button.danger-btn {
+  background: #EF4444;
+}
+button.danger-btn:hover {
+  background: #DC2626;
+}
+button.green-btn {
+  background: #10B981;
+}
+button.green-btn:hover {
+  background: #059669;
+}
+#logout-all-btn {
+  background: #EF4444;
+}
+#logout-all-btn:hover {
+  background: #DC2626;
+}
+.delete-account-btn {
+  width: 100%;
+  margin-top: 16px;
+  grid-column: 1 / -1;
+}
 .device-list {
   list-style: none;
   padding: 0;
@@ -134,7 +157,7 @@ button.primary-btn:active {
 .logout-device {
   background: transparent;
   border: none;
-  color: var(--accent-color);
+  color: #EF4444;
   cursor: pointer;
 }
 .modal {
@@ -176,4 +199,9 @@ button.primary-btn:active {
   color: var(--secondary-text-color);
   word-break: break-all;
   margin-bottom: 16px;
+}
+.confirm-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
 }
