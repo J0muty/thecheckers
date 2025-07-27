@@ -191,7 +191,18 @@ input:autofill{
     -webkit-text-fill-color:var(--text-color) !important;
     color:var(--text-color) !important;
 }
-
+.toggle-password svg{
+    width:24px;height:24px;
+    stroke:var(--secondary-text-color);
+    fill:none;
+    transition:stroke .2s ease;
+}
+.toggle-password:hover svg{
+    stroke:var(--accent-color);
+}
+.dark-mode .toggle-password svg{
+    stroke:var(--secondary-text-color);
+}
 .input-error{margin-top:4px;color:#ef4444;font-size:.875rem;opacity:0;max-height:0;transition:opacity .3s ease,max-height .3s ease;}
 .input-error.visible{opacity:1;max-height:40px;}
 input.error{border-color:#ef4444;}

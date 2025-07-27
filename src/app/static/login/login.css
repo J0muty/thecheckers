@@ -211,3 +211,16 @@ input:autofill{
 .dark-mode .toast{background:#374151;color:#F9FAFB;}
 .dark-mode .toast.success{background:#14532d;color:#dcfce7;}
 .dark-mode .toast.error{background:#7f1d1d;color:#fee2e2;}
+
+.toggle-password svg{
+    width:24px;height:24px;
+    stroke:var(--secondary-text-color);
+    fill:none;
+    transition:stroke .2s ease;
+}
+.toggle-password:hover svg{
+    stroke:var(--accent-color);
+}
+.dark-mode .toggle-password svg{
+    stroke:var(--secondary-text-color);
+}
