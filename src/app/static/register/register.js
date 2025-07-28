@@ -11,7 +11,8 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
     });
-const loginInput = document.getElementById('login');
+
+    const loginInput = document.getElementById('login');
     const emailInput = document.getElementById('email');
     const loginErr = document.getElementById('login-error');
     const emailErr = document.getElementById('email-error');
@@ -65,3 +66,11 @@ const loginInput = document.getElementById('login');
         emailTimer = setTimeout(() => check('email', value), 300);
     });
 });
+
+(function(){
+    function setVh(){
+        document.documentElement.style.setProperty('--vh', (window.innerHeight * 0.01) + 'px');
+    }
+    setVh();
+    window.addEventListener('resize', setVh);
+})();
