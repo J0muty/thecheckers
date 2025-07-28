@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const preview = document.getElementById('file-preview');
     const message = document.getElementById('report-message');
     const MAX_FILES = 5;
+    const selectedFiles = [];
     const MAX_TEXTAREA_HEIGHT = 250;
 
     const sanitize = (str) => {
@@ -67,8 +68,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function refreshPreviews() {
         preview.innerHTML = '';
-        const files = Array.from(fileInput.files);
-        files.forEach((file, index) => {
+        selectedFiles.forEach((file, index) => {
             if (!file.type.startsWith('image/')) return;
             const wrapper = document.createElement('div');
             wrapper.className = 'preview-image';
@@ -89,10 +89,9 @@ document.addEventListener('DOMContentLoaded', () => {
             remove.className = 'remove-image';
             remove.innerHTML = '<i class="fa-solid fa-trash"></i>';
             remove.addEventListener('click', () => {
+                selectedFiles.splice(index, 1);
                 const dt = new DataTransfer();
-                files.forEach((f, i) => {
-                    if (i !== index) dt.items.add(f);
-                });
+                selectedFiles.forEach(f => dt.items.add(f));
                 fileInput.files = dt.files;
                 refreshPreviews();
             });
@@ -105,33 +104,71 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     fileInput.addEventListener('change', () => {
-        let files = Array.from(fileInput.files);
+        const newFiles = Array.from(fileInput.files);
+        let added = 0;
 
-        if (files.length > MAX_FILES) {
-            showNotification(`Можно загрузить максимум ${MAX_FILES} изображений`, 'error');
-            files = files.slice(0, MAX_FILES);
-            const dt = new DataTransfer();
-            files.forEach(f => dt.items.add(f));
-            fileInput.files = dt.files;
+        newFiles.forEach(f => {
+            if (selectedFiles.length < MAX_FILES) {
+                selectedFiles.push(f);
+                added++;
+            }
+        });
+
+        if (added) {
+            showNotification(`Добавлено ${added} файл${added > 1 ? 'а' : ''}`);
         }
+
+        if (newFiles.length > added || selectedFiles.length > MAX_FILES) {
+            selectedFiles.splice(MAX_FILES);
+            showNotification(`Можно загрузить максимум ${MAX_FILES} изображений`, 'error');
+        }
+        
+        const dt = new DataTransfer();
+        selectedFiles.forEach(f => dt.items.add(f));
+        fileInput.files = dt.files;
 
         refreshPreviews();
     });
 
-    form.addEventListener('submit', e => {
+    form.addEventListener('submit', async e => {
+        e.preventDefault();
         const subject = document.getElementById('report-subject');
         const msg = sanitize(message.value.trim());
         const subj = sanitize(subject.value.trim());
 
         if (subj.length < 10) {
-            e.preventDefault();
             showNotification('Тема слишком короткая', 'error');
             return;
         }
         if (msg.length < 50) {
-            e.preventDefault();
             showNotification('Сообщение слишком короткое', 'error');
             return;
+        }
+
+        const formData = new FormData();
+        formData.append('username', form.username.value);
+        formData.append('email', form.email.value);
+        formData.append('subject', subj);
+        formData.append('message', msg);
+        selectedFiles.forEach(f => formData.append('files', f));
+
+        try {
+            const res = await fetch(form.action || '/report', {
+                method: 'POST',
+                body: formData
+            });
+            if (res.ok) {
+                showNotification('Сообщение отправлено');
+                form.reset();
+                selectedFiles.length = 0;
+                const dt = new DataTransfer();
+                fileInput.files = dt.files;
+                refreshPreviews();
+            } else {
+                showNotification('Ошибка отправки', 'error');
+            }
+        } catch {
+            showNotification('Ошибка отправки', 'error');
         }
     });
 });
