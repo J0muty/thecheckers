@@ -41,6 +41,7 @@ from src.base.postgres import (
     record_game,
     save_recorded_game,
 )
+from src.app.achievements.rating import check_rating_achievements
 
 logger = logging.getLogger(__name__)
 
@@ -304,6 +305,8 @@ async def api_make_move(request: Request, board_id: str, req: MoveRequest):
                     rating_change.get(color),
                     game_id=board_id,
                 )
+            await check_rating_achievements(white_id)
+            await check_rating_achievements(black_id)
         current_timers = await get_current_timers(board_id, create=False)
         await cleanup_board(board_id)
         await clear_lobby_board(board_id)
@@ -386,6 +389,8 @@ async def api_resign(request: Request, board_id: str, action: PlayerAction):
                 rating_change.get(color),
                 game_id=board_id,
             )
+        await check_rating_achievements(white_id)
+        await check_rating_achievements(black_id)
     timers = await get_current_timers(board_id, create=False)
     await cleanup_board(board_id)
     await clear_lobby_board(board_id)
@@ -455,6 +460,8 @@ async def api_draw_response(request: Request, board_id: str, resp: DrawResponse)
             )
             for color, uid in players.items():
                 await record_game(int(uid), "ranked", "draw", rating_change.get(color), game_id=board_id)
+            await check_rating_achievements(white_id)
+            await check_rating_achievements(black_id)
         timers = await get_current_timers(board_id, create=False)
         await cleanup_board(board_id)
         await clear_lobby_board(board_id)
@@ -532,6 +539,8 @@ async def api_check_timeout(board_id: str):
                 rating_change.get(color),
                 game_id=board_id,
             )
+        await check_rating_achievements(white_id)
+        await check_rating_achievements(black_id)
 
     await cleanup_board(board_id)
     await clear_lobby_board(board_id)
