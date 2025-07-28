@@ -315,8 +315,7 @@ async def api_make_move(request: Request, board_id: str, req: MoveRequest):
                 )
             await check_rating_achievements(white_id)
             await check_rating_achievements(black_id)
-        current_timers = await get_current_timers(board_id, create=False)
-        await freeze_timers(board_id)
+        current_timers = await freeze_timers(board_id)
         await expire_board(board_id, delay=600)
         await clear_lobby_board(board_id)
 
@@ -400,8 +399,7 @@ async def api_resign(request: Request, board_id: str, action: PlayerAction):
             )
         await check_rating_achievements(white_id)
         await check_rating_achievements(black_id)
-    timers = await get_current_timers(board_id, create=False)
-    await freeze_timers(board_id)
+    timers = await freeze_timers(board_id)
     await expire_board(board_id, delay=600)
     await clear_lobby_board(board_id)
     result = MoveResult(
@@ -472,8 +470,7 @@ async def api_draw_response(request: Request, board_id: str, resp: DrawResponse)
                 await record_game(int(uid), "ranked", "draw", rating_change.get(color), game_id=board_id)
             await check_rating_achievements(white_id)
             await check_rating_achievements(black_id)
-        timers = await get_current_timers(board_id, create=False)
-        await freeze_timers(board_id)
+        timers = await freeze_timers(board_id)
         await expire_board(board_id, delay=600)
         await clear_lobby_board(board_id)
         result = MoveResult(
@@ -553,6 +550,7 @@ async def api_check_timeout(board_id: str):
         await check_rating_achievements(white_id)
         await check_rating_achievements(black_id)
 
+    timers = await freeze_timers(board_id)
     await expire_board(board_id, delay=600)
     await clear_lobby_board(board_id)
     result = MoveResult(

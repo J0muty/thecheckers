@@ -8,10 +8,6 @@
             document.documentElement.classList.add('dark-mode');
         }
     </script>
-    <script src="/static/base/session_ws.js"></script>
-    <script>
-        window.globalSessionToken = "{{ request.session.session_token or '' }}";
-    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="/static/board/board.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -19,9 +15,10 @@
     <script>
         const boardId = "{{ board_id }}";
         const playerColor = "{{ player_color }}";
+        window.globalSessionToken = "{{ request.session.session_token or '' }}";
     </script>
     {% block board_script %}
-    <script src="/static/board/hotseat.js" defer></script>
+    <script src="/static/board/board.js" defer></script>
     {% endblock %}
 </head>
 <body>
@@ -50,11 +47,20 @@
             <div class="right-sidebar">
                 <i class="fas fa-times close-sidebar"></i>
                 <ul class="menu-list">
-                    <li class="menu-item" id="menuEnd">Закончить игру</li>
+                    <li class="menu-item" id="menuResign">Сдаться</li>
                     <li class="menu-item" id="menuHome">Главная</li>
                 </ul>
             </div>
             <div class="board-grid" id="board"></div>
+        </div>
+    </div>
+    <div id="resignModal" class="modal-overlay">
+        <div class="modal">
+            <p>Вы уверены, что хотите сдаться? Вы потеряете ранг.</p>
+            <div class="modal-buttons">
+                <button id="confirmResignBtn" class="btn-red">Да</button>
+                <button id="cancelResignBtn" class="btn-green">Нет</button>
+            </div>
         </div>
     </div>
     <div id="resultModal" class="modal-overlay">
@@ -66,5 +72,6 @@
             </div>
         </div>
     </div>
+    <script src="/static/base/session_ws.js"></script>
 </body>
 </html>

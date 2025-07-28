@@ -395,8 +395,11 @@ function updateTimerDisplay() {
     const elapsed = (Date.now() - timerStart) / 1000;
     let w = timers.white;
     let b = timers.black;
-    if (timers.turn === 'white') w = Math.max(0, w - elapsed);
-    else b = Math.max(0, b - elapsed);
+    if (timers.turn === 'white') {
+        w = Math.max(0, w - elapsed);
+    } else if (timers.turn === 'black') {
+        b = Math.max(0, b - elapsed);
+    }
     timer1.textContent = formatTime(w);
     timer2.textContent = formatTime(b);
     if (!gameOver && (w <= 0 || b <= 0)) {
@@ -408,7 +411,9 @@ function updateTimerDisplay() {
 function startTimers() {
     clearInterval(timerInterval);
     updateTimerDisplay();
-    timerInterval = setInterval(updateTimerDisplay, 1000);
+    if (timers.turn === 'white' || timers.turn === 'black') {
+        timerInterval = setInterval(updateTimerDisplay, 1000);
+    }
 }
 
 async function checkTimeout() {
