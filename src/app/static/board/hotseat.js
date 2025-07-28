@@ -332,6 +332,9 @@ function updateHistory(history) {
         li.textContent = displayMove(m);
         li.dataset.index = i + 1;
         li.addEventListener('click', onHistoryClick);
+        if (myColor && ((myColor === 'white' && i % 2 === 0) || (myColor === 'black' && i % 2 === 1))) {
+            li.classList.add('my-move');
+        }
         if (viewedMoveIndex === i + 1) {
             li.classList.add('active-history');
         }
