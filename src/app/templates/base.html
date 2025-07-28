@@ -11,6 +11,7 @@
     <title>{% block title %}TheCheckers{% endblock %}</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="/static/base/base.css">
+    <link rel="stylesheet" href="/static/base/toast.css">
     {% block extra_css %}{% endblock %}
     <script>
         window.globalUserId = "{{ request.session.user_id or '' }}";
