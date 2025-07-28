@@ -1,5 +1,5 @@
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.pool import NullPool
 from sqlalchemy import text, select, func
@@ -316,6 +316,19 @@ async def count_bot_results(user_id: int, difficulty: str, result: str, session:
     )
     q = await session.execute(stmt)
     return q.scalar_one()
+
+@connect
+async def sum_elo_change_since(user_id: int, since: datetime, session: AsyncSession) -> int:
+    stmt = (
+        select(func.coalesce(func.sum(GameHistory.elo_change), 0))
+        .where(
+            GameHistory.user_id == user_id,
+            GameHistory.timestamp >= since,
+            GameHistory.elo_change != None,
+        )
+    )
+    q = await session.execute(stmt)
+    return q.scalar_one() or 0
 
 @connect
 async def set_2fa_secret(user_id: int, secret: str, session: AsyncSession) -> None:

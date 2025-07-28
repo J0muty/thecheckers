@@ -61,6 +61,7 @@ TIME_ACHIEVEMENTS = [
     {"code": "long_game_60", "title": "Марафон 60+", "desc": "Партия длиннее 60 ходов", "icon": "fa-hourglass-end", "threshold": 60},
 ]
 
+# Позже
 ACTIVITY_ACHIEVEMENTS = [
     {"code": "daily_7", "title": "Каждый день", "desc": "Играйте 7 дней подряд", "icon": "fa-calendar-day", "threshold": 7},
     {"code": "daily_30", "title": "Месяц в строю", "desc": "Играйте 30 дней подряд", "icon": "fa-calendar-days", "threshold": 30},
@@ -68,11 +69,13 @@ ACTIVITY_ACHIEVEMENTS = [
     {"code": "rematch_now", "title": "Рематч!", "desc": "Сыграйте реванш сразу после игры", "icon": "fa-recycle"},
 ]
 
+# Пока нет
 TOURNAMENT_ACHIEVEMENTS = [
     {"code": "tournament_first", "title": "Турнирный дебют", "desc": "Сыграйте в своём первом турнире", "icon": "fa-sitemap"},
     {"code": "tournament_win", "title": "Чемпион турнира", "desc": "Займите 1-е место в турнире", "icon": "fa-trophy"},
 ]
 
+# Отслеживается
 BOT_ACHIEVEMENTS = [
     {"code": "bot_easy_1", "title": "Лёгкий? Легко!", "desc": "Победите бота на лёгком уровне", "icon": "fa-robot", "threshold": 1, "level": "easy"},
     {"code": "bot_easy_10", "title": "Лёгкий ×10", "desc": "Победите бота на лёгком уровне 10 раз", "icon": "fa-robot", "threshold": 10, "level": "easy"},
@@ -86,6 +89,7 @@ BOT_ACHIEVEMENTS = [
     {"code": "lose_to_easy_bot", "title": "Проиграл боту? Серьёзно?", "desc": "Проиграйте боту на лёгком уровне", "icon": "fa-face-grin-squint"},
 ]
 
+# Отслеживается
 FRIEND_ACHIEVEMENTS = [
     {"code": "friend_1", "title": "Новый товарищ", "desc": "Добавьте первого друга", "icon": "fa-user-plus", "threshold": 1},
     {"code": "friend_5", "title": "Своя компания", "desc": "Иметь 5 друзей", "icon": "fa-user-group", "threshold": 5},
@@ -94,6 +98,7 @@ FRIEND_ACHIEVEMENTS = [
     {"code": "friend_50", "title": "Своя соцсеть", "desc": "Иметь 50 друзей", "icon": "fa-people-line", "threshold": 50},
 ]
 
+# Пока нет
 MISC_ACHIEVEMENTS = [
     {"code": "chat_100", "title": "Активист чата", "desc": "Напишите 100 сообщений в чате", "icon": "fa-comments", "threshold": 100},
     {"code": "bug_report", "title": "Истребитель багов", "desc": "Сообщите о баге разработчикам", "icon": "fa-bug"},
