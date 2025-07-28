@@ -139,6 +139,11 @@ async def get_user_login(user_id: int, session: AsyncSession) -> str | None:
     return user.login if user else None
 
 @connect
+async def get_user_email(user_id: int, session: AsyncSession) -> str | None:
+    user = await session.get(User, user_id)
+    return user.email if user else None
+
+@connect
 async def get_user_stats(user_id: int, session: AsyncSession) -> dict:
     stats = await session.get(UserStats, user_id)
     if not stats:
