@@ -13,3 +13,11 @@ document.querySelectorAll('.toggle-password').forEach(toggle => {
         });
     });
 });
+
+(function(){
+    function setVh(){
+        document.documentElement.style.setProperty('--vh', (window.innerHeight * 0.01) + 'px');
+    }
+    setVh();
+    window.addEventListener('resize', setVh);
+})();
