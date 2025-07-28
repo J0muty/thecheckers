@@ -163,6 +163,7 @@ async function handleUpdate(data) {
 
     if (data.status && !gameOver) {
         gameOver = true;
+        stopTimers();
         let msg = '';
         if (data.status === 'white_win') msg = 'Белые победили!';
         else if (data.status === 'black_win') msg = 'Чёрные победили!';
@@ -408,10 +409,15 @@ function updateTimerDisplay() {
     }
 }
 
+function stopTimers() {
+    clearInterval(timerInterval);
+    updateTimerDisplay();
+}
+
 function startTimers() {
     clearInterval(timerInterval);
     updateTimerDisplay();
-        if (timers.turn === 'white' || timers.turn === 'black') {
+    if (!gameOver && (timers.turn === 'white' || timers.turn === 'black')) {
         timerInterval = setInterval(updateTimerDisplay, 1000);
     }
 }
