@@ -443,12 +443,18 @@ function buildWsUrl() {
 
 function setupWebSocket() {
     const ws = new WebSocket(buildWsUrl());
+        ws.addEventListener('open', () => {
+        fetchBoard();
+    });
     ws.addEventListener('message', async (e) => {
         const data = JSON.parse(e.data);
         await handleUpdate(data);
     });
     ws.addEventListener('close', () => {
-        setTimeout(setupWebSocket, 1000);
+        setTimeout(() => {
+            setupWebSocket();
+            fetchBoard();
+        }, 1000);
     });
 }
 
