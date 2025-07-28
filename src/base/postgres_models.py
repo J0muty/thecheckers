@@ -67,3 +67,20 @@ class RecordedGame(Base):
     timestamp = Column(DateTime(timezone=True), nullable=False)
     mode = Column(String(20), nullable=False, default="ranked")
     ranked = Column(Boolean, nullable=False, default=True)
+
+class Achievement(Base):
+    __tablename__ = "achievements"
+
+    id = Column(Integer, primary_key=True)
+    code = Column(String(50), unique=True, nullable=False)
+    title = Column(String(100), nullable=False)
+    description = Column(String(255), nullable=False)
+    icon = Column(String(50), nullable=False)
+
+
+class UserAchievement(Base):
+    __tablename__ = "user_achievements"
+
+    user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
+    achievement_id = Column(Integer, ForeignKey("achievements.id"), primary_key=True)
+    timestamp = Column(DateTime(timezone=True), nullable=False)

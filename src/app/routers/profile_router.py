@@ -3,18 +3,37 @@ from fastapi import Request, APIRouter, status, Form
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from src.settings.settings import templates
 from src.base.postgres import (
-    get_user_stats, get_user_login, get_friends, get_friend_requests,
-    search_users, send_friend_request, cancel_friend_request,
-    remove_friend, get_user_history, get_2fa_info,
-    set_2fa_secret, enable_2fa, disable_2fa,
-    authenticate_user, delete_user_account
+    get_user_stats,
+    get_user_login,
+    get_friends,
+    get_friend_requests,
+    search_users,
+    send_friend_request,
+    cancel_friend_request,
+    remove_friend,
+    get_user_history,
+    get_2fa_info,
+    set_2fa_secret,
+    enable_2fa,
+    disable_2fa,
+    authenticate_user,
+    delete_user_account,
+    get_achievements,
+    get_user_achievements,
 )
 from src.app.routers.ws_router import friends_manager
 from src.app.utils.session_manager import (
-    get_sessions, delete_session, delete_all_sessions
+    get_sessions,
+    delete_session,
+    delete_all_sessions,
 )
 from src.base.redis import redis_client, CHAT_PREFIX, get_user_chats
-from src.base.lobby_redis import get_user_lobby, remove_player, get_user_invites, remove_user_invite
+from src.base.lobby_redis import (
+    get_user_lobby,
+    remove_player,
+    get_user_invites,
+    remove_user_invite,
+)
 from src.app.utils.totp import generate_secret, build_uri, verify_code
 
 profile_router = APIRouter()
@@ -141,6 +160,17 @@ async def api_history(request: Request, offset: int = 0, limit: int = 10):
     uid = int(user_id)
     history = await get_user_history(uid, offset=offset, limit=limit)
     return JSONResponse({"history": history})
+
+@profile_router.get("/api/achievements")
+async def api_achievements(request: Request):
+    user_id = request.session.get("user_id")
+    if not user_id:
+        return JSONResponse(
+            {"error": "unauthorized"}, status_code=status.HTTP_401_UNAUTHORIZED
+        )
+    unlocked = await get_user_achievements(int(user_id))
+    all_ach = await get_achievements()
+    return JSONResponse({"achievements": all_ach, "unlocked": unlocked})
 
 @profile_router.post("/api/2fa/setup/start")
 async def api_2fa_start(request: Request):
