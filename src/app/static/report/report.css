@@ -1,8 +1,19 @@
+body.no-scroll { overflow: hidden; }
+html, body { height: 100%; }
+
 .report-wrapper {
-    max-width: 700px;
-    margin: 24px auto;
+    max-width: 780px;
+    margin: calc(60px + 24px) auto 24px;
     padding: 0 16px;
+    width: 100%;
+    box-sizing: border-box;
+    height: calc(100vh - 60px - 48px);
+    overflow: hidden;
+    overscroll-behavior: contain;
+    display: flex;
+    flex-direction: column;
 }
+
 .report-form {
     background: var(--surface-color);
     padding: 32px;
@@ -10,11 +21,18 @@
     box-shadow: 0 4px 12px rgba(0,0,0,0.08);
     display: flex;
     flex-direction: column;
+    gap: 16px;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
 }
+
 .report-form .input-group {
     position: relative;
     margin-bottom: 20px;
 }
+
 .report-form .input-group input,
 .report-form .input-group textarea {
     width: 100%;
@@ -26,8 +44,14 @@
     font-size: 1rem;
     resize: vertical;
 }
-.report-form .input-group textarea { min-height: 120px; }
-.report-form .input-group label {
+
+.report-form .input-group textarea {
+    min-height: 120px;
+    max-height: 250px;
+    overflow-y: auto;
+}
+
+.report-form .input-group:not(.file-group) label {
     position: absolute;
     top: 50%;
     left: 12px;
@@ -38,26 +62,24 @@
     background: var(--surface-color);
     padding: 0 4px;
 }
+
 .report-form .input-group input:focus + label,
 .report-form .input-group input:not(:placeholder-shown) + label,
 .report-form .input-group textarea:focus + label,
-.report-form .input-group textarea:not(:placeholder-shown) + label {
+.report-form .input-group textarea:not(:placeholder-shown) + label,
+.report-form .input-group input[readonly] + label {
     top: 0;
     font-size: 12px;
     color: var(--accent-color);
 }
+
 .report-form .input-group input:focus,
 .report-form .input-group textarea:focus {
     border-color: var(--accent-color);
     outline: none;
     box-shadow: 0 0 5px var(--accent-color);
 }
-.report-form .hint {
-    color: var(--secondary-text-color);
-    margin-top: -12px;
-    margin-bottom: 12px;
-    font-size: 0.9rem;
-}
+
 .report-form .primary-btn {
     align-self: flex-start;
     padding: 14px 24px;
@@ -75,4 +97,109 @@
 }
 .report-form .primary-btn:active {
     transform: translateY(0);
+}
+
+.report-form .file-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    background: var(--button-color);
+    color: #fff !important;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: background-color .3s ease, transform .2s ease;
+    font-size: 0.95rem;
+    position: relative;
+    pointer-events: auto;
+    user-select: none;
+}
+
+.report-form .file-btn:hover {
+    background: var(--accent-color);
+    transform: translateY(-1px);
+}
+
+.file-preview {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 12px;
+    max-height: 220px;
+    overflow-y: auto;
+}
+.file-preview .preview-image {
+    position: relative;
+}
+.file-preview .preview-image img {
+    width: 110px;
+    height: 110px;
+    object-fit: cover;
+    border-radius: var(--border-radius);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    cursor: pointer;
+}
+.file-preview .preview-image .remove-image,
+.file-preview .preview-image .zoom-image {
+    position: absolute;
+    width: 26px;
+    height: 26px;
+    background: rgba(0,0,0,0.65);
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity .2s;
+    font-size: 14px;
+    line-height: 0;
+    color: #ff4d4f;
+}
+.file-preview .preview-image .zoom-image {
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #fff;
+}
+.file-preview .preview-image .remove-image {
+    top: 4px;
+    right: 4px;
+}
+.file-preview .preview-image:hover .remove-image,
+.file-preview .preview-image:hover .zoom-image {
+    opacity: 1;
+}
+
+#img-viewer-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+#img-viewer {
+    max-width: 70vw;
+    max-height: 70vh;
+    border-radius: var(--border-radius);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+}
+#img-viewer-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 34px;
+    height: 34px;
+    background: rgba(0,0,0,0.7);
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
 }
