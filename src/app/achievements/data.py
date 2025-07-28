@@ -1,5 +1,3 @@
-# src/app/achievements/data.py
-
 PLAY_ACHIEVEMENTS = [
     {"code": "games_1", "title": "Молниеносный старт", "desc": "Сыграйте свою первую игру", "icon": "fa-bolt", "threshold": 1},
     {"code": "games_10", "title": "Десятка опыта", "desc": "Сыграйте 10 игр", "icon": "fa-gamepad", "threshold": 10},
