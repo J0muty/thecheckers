@@ -5,7 +5,7 @@ from fastapi import Request, APIRouter, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import BaseModel
 from typing import List, Optional, Tuple
-from src.app.routers.ws_router import board_manager
+from src.app.routers.ws_router import board_manager, notify_manager
 
 from src.settings.settings import templates
 from src.base.redis import (
@@ -24,6 +24,9 @@ from src.base.redis import (
     set_draw_offer,
     get_draw_offer,
     clear_draw_offer,
+    add_rematch_invite,
+    remove_rematch_invite,
+    get_board_rematch_invites,
 )
 from src.base.lobby_redis import clear_lobby_board
 from src.app.game.game_logic import (
@@ -554,3 +557,70 @@ async def api_check_timeout(board_id: str):
     )
     await board_manager.broadcast(board_id, result.json())
     return result
+
+@board_router.post("/api/rematch_request/{board_id}")
+async def api_rematch_request(request: Request, board_id: str):
+    user_id = request.session.get("user_id")
+    if user_id is None:
+        raise HTTPException(status_code=401)
+    players = await get_board_players(board_id)
+    if not players or str(user_id) not in players.values():
+        raise HTTPException(status_code=404)
+    opponent_id = None
+    my_color = None
+    for color, uid in players.items():
+        if uid == str(user_id):
+            my_color = color
+        else:
+            opponent_id = uid
+    if not opponent_id:
+        raise HTTPException(status_code=400)
+    await add_rematch_invite(board_id, opponent_id, str(user_id))
+    msg = json.dumps({"type": "rematch_offer", "from": my_color})
+    await board_manager.broadcast(board_id, msg)
+    await notify_manager.broadcast(
+        opponent_id,
+        json.dumps({"type": "invite"})
+    )
+    return JSONResponse({"status": "ok"})
+
+
+@board_router.post("/api/rematch_response/{board_id}")
+async def api_rematch_response(request: Request, board_id: str, action: str):
+    user_id = request.session.get("user_id")
+    if user_id is None:
+        raise HTTPException(status_code=401)
+    players = await get_board_players(board_id)
+    if not players:
+        raise HTTPException(status_code=404)
+    invites = await get_board_rematch_invites(board_id)
+    sender_id = invites.get(str(user_id))
+    if not sender_id:
+        raise HTTPException(status_code=404)
+    await remove_rematch_invite(board_id, str(user_id))
+    if action == "accept":
+        new_board_id = str(uuid.uuid4())
+        await set_board_players(new_board_id, players)
+        for uid in players.values():
+            await assign_user_board(uid, new_board_id)
+        await board_manager.broadcast(
+            board_id,
+            json.dumps({"type": "rematch_start", "board_id": new_board_id})
+        )
+        await notify_manager.broadcast(
+            sender_id,
+            json.dumps({"type": "rematch_start", "board_id": new_board_id})
+        )
+        await notify_manager.broadcast(
+            str(user_id),
+            json.dumps({"type": "rematch_start", "board_id": new_board_id})
+        )
+        return JSONResponse({"board_id": new_board_id})
+    else:
+        await board_manager.broadcast(board_id, json.dumps({"type": "rematch_decline"}))
+        login = await get_user_login(int(user_id))
+        await notify_manager.broadcast(
+            sender_id,
+            json.dumps({"type": "rematch_decline", "from_login": login or str(user_id)})
+        )
+        return JSONResponse({"status": "declined"})

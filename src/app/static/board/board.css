@@ -420,8 +420,8 @@ body {
     justify-content: center;
 }
 
-.btn-red,
-.btn-green {
+.btn-green,
+.btn-blue {
     padding: 8px 16px;
     border: none;
     color: #fff;
@@ -435,6 +435,10 @@ body {
 
 .btn-green {
     background: #10b981;
+}
+
+.btn-blue {
+    background: #3b82f6;
 }
 
 @media (max-width: 1200px) {

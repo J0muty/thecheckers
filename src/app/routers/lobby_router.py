@@ -25,6 +25,7 @@ from src.base.redis import (
     assign_user_board,
     get_lobby_chat_messages,
     save_lobby_chat_message,
+    get_user_rematch_invites,
 )
 from src.app.routers.ws_router import waiting_manager, lobby_manager, notify_manager
 
@@ -255,8 +256,12 @@ async def api_get_invites(request: Request):
     if not user_id:
         raise HTTPException(status_code=401)
     invites = await get_user_invites(str(user_id))
+    rematch = await get_user_rematch_invites(str(user_id))
     result = []
     for lid, frm in invites.items():
         login = await get_user_login(int(frm))
-        result.append({"lobby_id": lid, "from_id": frm, "from_login": login or str(frm)})
+        result.append({"type": "lobby", "lobby_id": lid, "from_id": frm, "from_login": login or str(frm)})
+    for bid, frm in rematch.items():
+        login = await get_user_login(int(frm))
+        result.append({"type": "rematch", "board_id": bid, "from_id": frm, "from_login": login or str(frm)})
     return JSONResponse({"invites": result})
