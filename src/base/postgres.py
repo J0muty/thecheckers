@@ -11,8 +11,11 @@ from src.base.postgres_models import (
     Friend,
     FriendRequest,
     RecordedGame,
-    GameHistory
+    GameHistory,
+    Achievement,
+    UserAchievement,
 )
+from src.app.achievements.data import ALL_ACHIEVEMENTS
 from src.app.game.count_and_rang import update_elo, calculate_rank
 from src.app.utils.security import hash_password, verify_password
 from src.settings.config import MOSCOW_TZ, db_user, db_password, db_host, db_port, db_name
@@ -40,6 +43,9 @@ async def init_db():
     async with engine.begin() as conn:
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS citext;"))
         await conn.run_sync(Base.metadata.create_all)
+
+    await ensure_achievements(ALL_ACHIEVEMENTS)
+
 
 def connect(method):
     async def wrapper(*args, **kwargs):
@@ -187,6 +193,10 @@ async def send_friend_request(from_id: int, to_id: int, session: AsyncSession) -
         session.add(Friend(user_id=from_id, friend_id=to_id))
         session.add(Friend(user_id=to_id, friend_id=from_id))
         await session.commit()
+        from src.app.achievements.friends import check_friend_achievements
+        await check_friend_achievements(from_id)
+        await check_friend_achievements(to_id)
+
         return
     fr = FriendRequest(from_user_id=from_id, to_user_id=to_id)
     session.add(fr)
@@ -343,3 +353,71 @@ async def delete_user_account(user_id: int, session: AsyncSession) -> None:
     if user:
         await session.delete(user)
     await session.commit()
+
+@connect
+async def ensure_achievements(achievements: list[dict], session: AsyncSession) -> None:
+    for ach in achievements:
+        q = await session.execute(
+            select(Achievement).where(Achievement.code == ach["code"])
+        )
+        if q.scalar_one_or_none() is None:
+            obj = Achievement(
+                code=ach["code"],
+                title=ach["title"],
+                description=ach["desc"],
+                icon=ach["icon"],
+            )
+            session.add(obj)
+    await session.commit()
+
+
+@connect
+async def unlock_achievement(user_id: int, code: str, session: AsyncSession) -> None:
+    q = await session.execute(select(Achievement).where(Achievement.code == code))
+    achievement = q.scalar_one_or_none()
+    if not achievement:
+        return
+    exists = await session.execute(
+        select(UserAchievement).where(
+            UserAchievement.user_id == user_id,
+            UserAchievement.achievement_id == achievement.id,
+        )
+    )
+    if exists.scalar_one_or_none():
+        return
+    ua = UserAchievement(
+        user_id=user_id,
+        achievement_id=achievement.id,
+        timestamp=datetime.now(tz=MOSCOW_TZ),
+    )
+    session.add(ua)
+    await session.commit()
+
+
+@connect
+async def get_user_achievements(user_id: int, session: AsyncSession) -> list[str]:
+    result = await session.execute(
+        select(UserAchievement.achievement_id).where(UserAchievement.user_id == user_id)
+    )
+    ids = [row[0] for row in result.all()]
+    if not ids:
+        return []
+    codes = await session.execute(
+        select(Achievement.code).where(Achievement.id.in_(ids))
+    )
+    return [row[0] for row in codes.all()]
+
+
+@connect
+async def get_achievements(session: AsyncSession) -> list[dict]:
+    result = await session.execute(select(Achievement))
+    achievements = result.scalars().all()
+    return [
+        {
+            "code": a.code,
+            "title": a.title,
+            "desc": a.description,
+            "icon": a.icon,
+        }
+        for a in achievements
+    ]
