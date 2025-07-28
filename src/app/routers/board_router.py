@@ -2,7 +2,7 @@ import uuid
 import json
 import logging
 from fastapi import Request, APIRouter, HTTPException
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from pydantic import BaseModel
 from typing import List, Optional, Tuple
 from src.app.routers.ws_router import board_manager, notify_manager
