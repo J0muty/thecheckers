@@ -25,7 +25,7 @@ from src.base.hotseat_redis import (
     apply_move_timer,
     apply_same_turn_timer,
     get_board_state_at,
-    cleanup_board,
+    expire_board,
     get_game_user,
 )
 from src.app.routers.ws_router import board_manager
@@ -194,7 +194,7 @@ async def api_hotseat_move(board_id: str, req: MoveRequest):
         await _log_game_result(board_id, status)
         history = await get_history(board_id)
         timers_view = await get_current_timers(board_id, create=False)
-        await cleanup_board(board_id)
+        await expire_board(board_id, delay=600)
     else:
         history = await get_history(board_id)
         timers_view = await get_current_timers(board_id)
@@ -226,7 +226,7 @@ async def api_hotseat_check_timeout(board_id: str):
         status = "black_win" if active == "white" else "white_win"
     if status:
         await _log_game_result(board_id, status)
-        await cleanup_board(board_id)
+        await expire_board(board_id, delay=600)
     result = MoveResult(board=board, status=status, history=history, timers=timers)
     await board_manager.broadcast(board_id, result.json())
     return result
@@ -240,7 +240,7 @@ async def api_hotseat_end(request: Request, board_id: str):
     history = await get_history(board_id)
     timers = await get_current_timers(board_id)
     await _log_game_result(board_id, "ended")
-    await cleanup_board(board_id)
+    await expire_board(board_id, delay=600)
     user_id = request.session.get("user_id")
     if user_id:
         await clear_user_hotseat(str(user_id))
