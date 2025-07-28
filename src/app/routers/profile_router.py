@@ -22,6 +22,7 @@ from src.base.postgres import (
     get_user_achievements,
 )
 from src.app.routers.ws_router import friends_manager
+from src.app.achievements.friends import check_friend_achievements
 from src.app.utils.session_manager import (
     get_sessions,
     delete_session,
@@ -72,6 +73,7 @@ async def api_friends(request: Request):
     uid = int(user_id)
     friends = await get_friends(uid)
     requests = await get_friend_requests(uid)
+    await check_friend_achievements(uid)
     return JSONResponse({"friends": friends, "requests": requests})
 
 @profile_router.get("/api/search_users")
