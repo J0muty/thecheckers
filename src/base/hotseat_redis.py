@@ -168,7 +168,7 @@ async def expire_board(game_id: str, delay: int = 300):
     for key in user_keys:
         val = await redis_client.get(key)
         if val == game_id:
-            await redis_client.delete(key)
+            await redis_client.expire(key, delay)
 
 async def get_game_user(game_id: str) -> str | None:
     keys = await redis_client.keys(f"{USER_HOTSEAT_KEY_PREFIX}:*")

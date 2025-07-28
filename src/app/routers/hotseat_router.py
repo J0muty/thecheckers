@@ -28,6 +28,7 @@ from src.base.hotseat_redis import (
     get_board_state_at,
     expire_board,
     get_game_user,
+    cleanup_board,
 )
 from src.app.routers.ws_router import board_manager
 from src.base.postgres import record_game, save_recorded_game
@@ -55,6 +56,11 @@ async def _log_game_result(board_id: str, status: str):
         ranked=False,
     )
     await record_game(int(user), "hotseat", status, None, game_id=board_id)
+
+
+async def is_finished(board_id: str) -> bool:
+    timers = await get_current_timers(board_id, create=False)
+    return timers is not None and timers.get("turn") == "stopped"
 
 
 class MoveRequest(BaseModel):
@@ -102,22 +108,19 @@ async def hotseat_redirect(request: Request):
     return RedirectResponse(url)
 
 
-@hotseat_router.get(
-    "/hotseat/{board_id}", response_class=HTMLResponse, name="hotseat_page"
-)
+@hotseat_router.get("/hotseat/{board_id}", response_class=HTMLResponse, name="hotseat_page")
 async def hotseat_page(request: Request, board_id: str):
     if not await game_exists(board_id):
         raise HTTPException(status_code=404)
     session_user = request.session.get("user_id")
-    if session_user:
+    finished = await is_finished(board_id)
+    if finished and session_user:
+        await clear_user_hotseat(str(session_user))
+    if session_user and not finished:
         await assign_user_hotseat(str(session_user), board_id)
     return templates.TemplateResponse(
         "hotseat.html",
-        {
-            "request": request,
-            "board_id": board_id,
-            "player_color": "",
-        },
+        {"request": request, "board_id": board_id, "player_color": ""},
     )
 
 
@@ -127,7 +130,7 @@ async def api_hotseat_board(board_id: str):
         raise HTTPException(status_code=404)
     board = await get_board_state(board_id)
     history = await get_history(board_id)
-    timers = await get_current_timers(board_id)
+    timers = await get_current_timers(board_id, create=False) or await get_current_timers(board_id)
     return BoardState(board=board, history=history, timers=timers)
 
 
