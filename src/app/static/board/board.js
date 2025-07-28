@@ -180,13 +180,13 @@ async function handleUpdate(data) {
                 msg = winner === 'white' ? 'Белые победили!' : 'Чёрные победили!';
             }
             const reasonMap = {
-                no_pieces: 'У противника не осталось шашек',
-                no_moves: 'Противнику некуда ходить',
-                resign: 'Противник сдался',
-                timeout: 'У противника истекло время',
+                no_pieces: () => myColor && myColor !== winner ? 'У вас не осталось шашек' : 'У противника не осталось шашек',
+                no_moves: () => myColor && myColor !== winner ? 'Вам некуда ходить' : 'Противнику некуда ходить',
+                resign:   () => myColor && myColor !== winner ? 'Вы сдались' : 'Противник сдался',
+                timeout:  () => myColor && myColor !== winner ? 'У вас истекло время' : 'У противника истекло время',
             };
             if (data.reason && reasonMap[data.reason]) {
-                msg += ' ' + reasonMap[data.reason];
+                msg += ' ' + reasonMap[data.reason]();
             }
         } else if (data.status === 'draw') {
             msg = 'Ничья!';
@@ -242,7 +242,7 @@ async function performMove(startR, startC, endR, endC, isCapture) {
     });
     const data = await res.json();
     if (!res.ok) {
-        alert(data.detail || 'Неверный ход');
+        showNotification(data.detail || 'Неверный ход', 'error');
         return;
     }
 
@@ -487,13 +487,13 @@ function setupWebSocket() {
                 showModal(drawOfferModal);
             }
         } else if (data.type === 'draw_declined') {
-            alert('Предложение ничьи отклонено');
+            showNotification('Предложение ничьи отклонено', 'error');
         } else if (data.type === 'rematch_offer') {
             if (data.from !== myColor) {
                 showModal(rematchOfferModal);
             }
         } else if (data.type === 'rematch_decline') {
-            alert('Реванш отклонён');
+            showNotification('Реванш отклонён', 'error');
         } else if (data.type === 'rematch_start') {
             window.location.href = `/board/${data.board_id}`;
         } else {
@@ -564,7 +564,7 @@ document.getElementById('menuDraw').addEventListener('click', async () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ player: myColor })
     });
-    if (res.ok) alert('Предложение отправлено');
+    if (res.ok) showNotification('Предложение отправлено');
 });
 
 acceptDrawBtn.addEventListener('click', () => respondDraw(true));
@@ -595,7 +595,7 @@ if (rematchBtn) {
     rematchBtn.addEventListener('click', async () => {
         hideModal(resultModal);
         const res = await fetch(`/api/rematch_request/${boardId}`, { method: 'POST' });
-        if (res.ok) alert('Запрос на реванш отправлен');
+        if (res.ok) showNotification('Запрос на реванш отправлен');
     });
 }
 
