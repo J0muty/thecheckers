@@ -15,6 +15,10 @@ const resultModal = document.getElementById('resultModal');
 const resultText = document.getElementById('resultText');
 const resultHomeBtn = document.getElementById('resultHomeBtn');
 const resultCloseBtn = document.getElementById('resultCloseBtn');
+const rematchBtn = document.getElementById('rematchBtn');
+const rematchOfferModal = document.getElementById('rematchOfferModal');
+const acceptRematchBtn = document.getElementById('acceptRematchBtn');
+const declineRematchBtn = document.getElementById('declineRematchBtn');
 const letters = ['', 'A','B','C','D','E','F','G','H',''];
 const numbers = ['', '8','7','6','5','4','3','2','1',''];
 const myColor = typeof playerColor !== 'undefined' && playerColor ? playerColor : null;
@@ -471,6 +475,14 @@ function setupWebSocket() {
             }
         } else if (data.type === 'draw_declined') {
             alert('Предложение ничьи отклонено');
+        } else if (data.type === 'rematch_offer') {
+            if (data.from !== myColor) {
+                showModal(rematchOfferModal);
+            }
+        } else if (data.type === 'rematch_decline') {
+            alert('Реванш отклонён');
+        } else if (data.type === 'rematch_start') {
+            window.location.href = `/board/${data.board_id}`;
         } else {
             await handleUpdate(data);
         }
@@ -565,3 +577,23 @@ resultHomeBtn.addEventListener('click', () => {
 resultCloseBtn.addEventListener('click', () => {
     hideModal(resultModal);
 });
+
+if (rematchBtn) {
+    rematchBtn.addEventListener('click', async () => {
+        hideModal(resultModal);
+        const res = await fetch(`/api/rematch_request/${boardId}`, { method: 'POST' });
+        if (res.ok) alert('Запрос на реванш отправлен');
+    });
+}
+
+acceptRematchBtn.addEventListener('click', () => respondRematch(true));
+declineRematchBtn.addEventListener('click', () => respondRematch(false));
+
+async function respondRematch(accept) {
+    hideModal(rematchOfferModal);
+    const res = await fetch(`/api/rematch_response/${boardId}?action=${accept ? 'accept' : 'decline'}`, { method: 'POST' });
+    if (res.ok && accept) {
+        const data = await res.json();
+        window.location.href = `/board/${data.board_id}`;
+    }
+}

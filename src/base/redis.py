@@ -24,6 +24,8 @@ WAITING_TIME_PREFIX = "waiting_time"
 WAITING_TIMEOUT = 600
 CHAT_PREFIX = "chats"
 LOBBY_CHAT_PREFIX = "lobby_chat"
+REMATCH_INVITES_PREFIX = "rematch_invites"
+USER_REMATCH_PREFIX = "user_rematch"
 
 logger = logging.getLogger(__name__)
 
@@ -356,3 +358,48 @@ async def get_lobby_chat_messages(lobby_id: str, limit: int = 50):
 
 async def clear_lobby_chat(lobby_id: str):
     await redis_client.delete(f"{LOBBY_CHAT_PREFIX}:{lobby_id}")
+
+async def _read_rematch_invites(board_id: str) -> dict:
+    raw = await redis_client.get(f"{REMATCH_INVITES_PREFIX}:{board_id}")
+    return json.loads(raw) if raw else {}
+
+
+async def _write_rematch_invites(board_id: str, data: dict) -> None:
+    await redis_client.set(f"{REMATCH_INVITES_PREFIX}:{board_id}", json.dumps(data))
+
+
+async def _read_user_rematch(user_id: str) -> dict:
+    raw = await redis_client.get(f"{USER_REMATCH_PREFIX}:{user_id}")
+    return json.loads(raw) if raw else {}
+
+
+async def _write_user_rematch(user_id: str, data: dict) -> None:
+    await redis_client.set(f"{USER_REMATCH_PREFIX}:{user_id}", json.dumps(data))
+
+
+async def add_rematch_invite(board_id: str, to_id: str, from_id: str) -> None:
+    board_invites = await _read_rematch_invites(board_id)
+    board_invites[to_id] = from_id
+    await _write_rematch_invites(board_id, board_invites)
+
+    user_invites = await _read_user_rematch(to_id)
+    user_invites[board_id] = from_id
+    await _write_user_rematch(to_id, user_invites)
+
+
+async def remove_rematch_invite(board_id: str, user_id: str) -> None:
+    board_invites = await _read_rematch_invites(board_id)
+    board_invites.pop(user_id, None)
+    await _write_rematch_invites(board_id, board_invites)
+
+    user_invites = await _read_user_rematch(user_id)
+    user_invites.pop(board_id, None)
+    await _write_user_rematch(user_id, user_invites)
+
+
+async def get_user_rematch_invites(user_id: str) -> dict:
+    return await _read_user_rematch(user_id)
+
+
+async def get_board_rematch_invites(board_id: str) -> dict:
+    return await _read_rematch_invites(board_id)
