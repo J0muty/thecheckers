@@ -95,7 +95,7 @@ FRIEND_ACHIEVEMENTS = [
 ]
 
 MISC_ACHIEVEMENTS = [
-    {"code": "chat_10", "title": "Активист чата", "desc": "Напишите 10 сообщений в чате", "icon": "fa-comments", "threshold": 10},
+    {"code": "chat_100", "title": "Активист чата", "desc": "Напишите 100 сообщений в чате", "icon": "fa-comments", "threshold": 100},
     {"code": "bug_report", "title": "Истребитель багов", "desc": "Сообщите о баге разработчикам", "icon": "fa-bug"},
 ]
 
