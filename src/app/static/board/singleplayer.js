@@ -146,8 +146,8 @@ async function handleUpdate(data) {
     viewingHistory = false;
     returnButton.style.display = 'none';
     if (data.players) {
-        if (data.players.white) player1.querySelector('.player-name').textContent = data.players.white.slice(0, 8);
-        if (data.players.black) player2.querySelector('.player-name').textContent = data.players.black.slice(0, 8);а
+        if (data.players.white) player1.querySelector('.player-name').textContent = data.players.white;
+        if (data.players.black) player2.querySelector('.player-name').textContent = data.players.black;
     }
     setActivePlayer(turn);
     startTimers();
