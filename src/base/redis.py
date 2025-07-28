@@ -21,6 +21,7 @@ DRAW_OFFER_KEY_PREFIX = "draw_offer"
 DEFAULT_TIME = 600
 WAITING_KEY = "waiting_user"
 WAITING_TIME_PREFIX = "waiting_time"
+WAITING_TIMEOUT = 600
 CHAT_PREFIX = "chats"
 LOBBY_CHAT_PREFIX = "lobby_chat"
 
@@ -221,6 +222,8 @@ async def add_to_waiting(username: str):
             color = "white" if players.get("white") == username else "black"
             return board_id, color
     waiting = await redis_client.get(WAITING_KEY)
+    if waiting and await waiting_timed_out(waiting):
+        waiting = None
     if waiting and waiting != username:
         board_id = str(uuid.uuid4())
         await redis_client.delete(WAITING_KEY)
@@ -231,8 +234,10 @@ async def add_to_waiting(username: str):
         return board_id, "black"
     if waiting == username:
         return None, None
-    await redis_client.set(WAITING_KEY, username)
-    await redis_client.set(f"{WAITING_TIME_PREFIX}:{username}", time.time())
+    await redis_client.set(WAITING_KEY, username, ex=WAITING_TIMEOUT)
+    await redis_client.set(
+        f"{WAITING_TIME_PREFIX}:{username}", time.time(), ex=WAITING_TIMEOUT
+    )
     return None, None
 
 
@@ -245,6 +250,8 @@ async def check_waiting(username: str):
             return board_id, color
         else:
             await redis_client.delete(f"{USER_BOARD_KEY_PREFIX}:{username}")
+    if await waiting_timed_out(username):
+        return None, None
     return None, None
 
 
@@ -252,6 +259,14 @@ async def get_waiting_time(username: str):
     key = f"{WAITING_TIME_PREFIX}:{username}"
     ts = await redis_client.get(key)
     return float(ts) if ts else None
+
+
+async def waiting_timed_out(username: str) -> bool:
+    ts = await get_waiting_time(username)
+    if ts and time.time() - ts >= WAITING_TIMEOUT:
+        await cancel_waiting(username)
+        return True
+    return False
 
 
 async def cancel_waiting(username: str):

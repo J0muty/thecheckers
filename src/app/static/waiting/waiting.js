@@ -17,15 +17,33 @@ function formatTime(s) {
 async function startTimer() {
     const res = await fetch('/api/user_status');
     const data = await res.json();
+    if (data.timeout) {
+        window.location.href = '/';
+        return;
+    }
     const start = data.waiting_since
         ? data.waiting_since * 1000
         : Date.now();
     seconds = Math.floor((Date.now() - start) / 1000);
     timerEl.textContent = formatTime(seconds);
     clearInterval(timerInterval);
-    timerInterval = setInterval(() => {
+    timerInterval = setInterval(async () => {
         seconds += 1;
         timerEl.textContent = formatTime(seconds);
+        if (seconds >= 600) {
+            cancelSearch();
+            clearInterval(timerInterval);
+            window.location.href = '/';
+            return;
+        }
+        if (seconds % 10 === 0) {
+            const resp = await fetch('/api/user_status');
+            const info = await resp.json();
+            if (info.timeout) {
+                clearInterval(timerInterval);
+                window.location.href = '/';
+            }
+        }
     }, 1000);
 }
 
@@ -81,6 +99,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (data.board_id) {
         showNotification('Вы уже находитесь в сетевой игре', 'error');
+        return;
+    } else if (data.timeout) {
+        window.location.href = '/';
         return;
     } else if (data.waiting_since) {
         await startTimer();
