@@ -13,6 +13,7 @@ from src.base.redis import (
     get_board_state,
     save_board_state,
     assign_user_board,
+    set_board_players,
     get_history,
     append_history,
     get_current_timers,
