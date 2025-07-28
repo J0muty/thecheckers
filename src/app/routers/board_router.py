@@ -47,6 +47,7 @@ from src.base.postgres import (
     save_recorded_game,
 )
 from src.app.achievements.rating import check_rating_achievements
+from src.app.utils.guest import is_guest, get_display_name
 
 logger = logging.getLogger(__name__)
 
@@ -160,8 +161,7 @@ async def api_get_board(board_id: str):
     timers = await get_current_timers(board_id)
     players = {}
     for color, uid in players_raw.items():
-        login = await get_user_login(int(uid))
-        players[color] = login or str(uid)
+        players[color] = await get_display_name(uid)
     return BoardState(board=board, history=history, timers=timers, players=players)
 
 
@@ -264,7 +264,7 @@ async def api_make_move(request: Request, board_id: str, req: MoveRequest):
     if status:
         players = await get_board_players(board_id)
         history = await get_history(board_id)
-        if players:
+        if players and players.get("white").isdigit() and players.get("black").isdigit():
             white_id = int(players.get("white"))
             black_id = int(players.get("black"))
             white_stats = await get_user_stats(white_id)
@@ -355,7 +355,7 @@ async def api_resign(request: Request, board_id: str, action: PlayerAction):
     board = await get_board_state(board_id, create=False)
     status = "black_win" if action.player == "white" else "white_win"
     players = await get_board_players(board_id)
-    if players:
+    if players and players.get("white").isdigit() and players.get("black").isdigit():
         white_id = int(players.get("white"))
         black_id = int(players.get("black"))
         white_stats = await get_user_stats(white_id)
@@ -447,7 +447,7 @@ async def api_draw_response(request: Request, board_id: str, resp: DrawResponse)
         board = await get_board_state(board_id, create=False)
         players = await get_board_players(board_id)
         rating_change = None
-        if players:
+        if players and players.get("white").isdigit() and players.get("black").isdigit():
             white_id = int(players.get("white"))
             black_id = int(players.get("black"))
             white_stats = await get_user_stats(white_id)
@@ -506,7 +506,7 @@ async def api_check_timeout(board_id: str):
 
     players = await get_board_players(board_id)
     rating_change = None
-    if players:
+    if players and players.get("white").isdigit() and players.get("black").isdigit():
         white_id = int(players.get("white"))
         black_id = int(players.get("black"))
         white_stats = await get_user_stats(white_id)
@@ -624,7 +624,10 @@ async def api_rematch_response(request: Request, board_id: str, action: str):
         return JSONResponse({"board_id": new_board_id})
     else:
         await board_manager.broadcast(board_id, json.dumps({"type": "rematch_decline"}))
-        login = await get_user_login(int(user_id))
+        if str(user_id).isdigit():
+            login = await get_user_login(int(user_id))
+        else:
+            login = str(user_id)
         await notify_manager.broadcast(
             sender_id,
             json.dumps({"type": "rematch_decline", "from_login": login or str(user_id)})

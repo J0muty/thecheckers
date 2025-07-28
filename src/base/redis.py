@@ -6,6 +6,7 @@ import uuid
 from typing import List, Tuple
 from src.app.game.game_logic import create_initial_board, validate_move, Board
 from src.settings.config import redis_host, redis_port, redis_db
+from src.app.utils.guest import is_guest
 
 redis_client = redis.Redis(
     host=redis_host, port=redis_port, db=redis_db, decode_responses=True
@@ -19,8 +20,10 @@ TIMER_KEY_PREFIX = "timer"
 PLAYERS_KEY = "players"
 DRAW_OFFER_KEY_PREFIX = "draw_offer"
 DEFAULT_TIME = 600
-WAITING_KEY = "waiting_user"
-WAITING_TIME_PREFIX = "waiting_time"
+WAITING_KEY_REG = "waiting_user_reg"
+WAITING_KEY_GUEST = "waiting_user_guest"
+WAITING_TIME_PREFIX_REG = "waiting_time_reg"
+WAITING_TIME_PREFIX_GUEST = "waiting_time_guest"
 WAITING_TIMEOUT = 600
 CHAT_PREFIX = "chats"
 LOBBY_CHAT_PREFIX = "lobby_chat"
@@ -29,6 +32,14 @@ USER_REMATCH_PREFIX = "user_rematch"
 
 logger = logging.getLogger(__name__)
 
+def _waiting_key(username: str) -> str:
+    return WAITING_KEY_GUEST if is_guest(username) else WAITING_KEY_REG
+
+
+def _waiting_time_prefix(username: str) -> str:
+    return (
+        WAITING_TIME_PREFIX_GUEST if is_guest(username) else WAITING_TIME_PREFIX_REG
+    )
 
 async def check_redis_connection():
     print("Проверка подключения к редису...")
@@ -43,19 +54,11 @@ async def check_redis_connection():
 
 
 async def board_exists(board_id: str) -> bool:
-    """Return ``True`` if any state is stored for the given board."""
     key = f"{REDIS_KEY_PREFIX}:{board_id}:state"
     return bool(await redis_client.exists(key))
 
 
 async def get_board_state(board_id: str, create: bool = True):
-    """Return board state or ``None`` if it does not exist.
-
-    When ``create`` is ``True`` a missing board will be initialised and stored
-    in Redis. This behaviour is useful when a new game is being created.  For
-    read-only operations use ``create=False`` to avoid accidental board
-    creation when the game no longer exists.
-    """
     key = f"{REDIS_KEY_PREFIX}:{board_id}:state"
     raw = await redis_client.get(key)
     if not raw:
@@ -239,22 +242,23 @@ async def add_to_waiting(username: str):
         if players:
             color = "white" if players.get("white") == username else "black"
             return board_id, color
-    waiting = await redis_client.get(WAITING_KEY)
+    wkey = _waiting_key(username)
+    waiting = await redis_client.get(wkey)
     if waiting and await waiting_timed_out(waiting):
         waiting = None
     if waiting and waiting != username:
         board_id = str(uuid.uuid4())
-        await redis_client.delete(WAITING_KEY)
-        await redis_client.delete(f"{WAITING_TIME_PREFIX}:{waiting}")
+        await redis_client.delete(wkey)
+        await redis_client.delete(f"{_waiting_time_prefix(waiting)}:{waiting}")
         await assign_user_board(waiting, board_id)
         await assign_user_board(username, board_id)
         await set_board_players(board_id, {"white": waiting, "black": username})
         return board_id, "black"
     if waiting == username:
         return None, None
-    await redis_client.set(WAITING_KEY, username, ex=WAITING_TIMEOUT)
+    await redis_client.set(wkey, username, ex=WAITING_TIMEOUT)
     await redis_client.set(
-        f"{WAITING_TIME_PREFIX}:{username}", time.time(), ex=WAITING_TIMEOUT
+        f"{_waiting_time_prefix(username)}:{username}", time.time(), ex=WAITING_TIMEOUT
     )
     return None, None
 
@@ -274,7 +278,7 @@ async def check_waiting(username: str):
 
 
 async def get_waiting_time(username: str):
-    key = f"{WAITING_TIME_PREFIX}:{username}"
+    key = f"{_waiting_time_prefix(username)}:{username}"
     ts = await redis_client.get(key)
     return float(ts) if ts else None
 
@@ -288,10 +292,11 @@ async def waiting_timed_out(username: str) -> bool:
 
 
 async def cancel_waiting(username: str):
-    waiting = await redis_client.get(WAITING_KEY)
+    wkey = _waiting_key(username)
+    waiting = await redis_client.get(wkey)
     if waiting == username:
-        await redis_client.delete(WAITING_KEY)
-        await redis_client.delete(f"{WAITING_TIME_PREFIX}:{username}")
+        await redis_client.delete(wkey)
+        await redis_client.delete(f"{_waiting_time_prefix(username)}:{username}")
     await redis_client.delete(f"{USER_BOARD_KEY_PREFIX}:{username}")
 
 

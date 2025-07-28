@@ -2,6 +2,7 @@ import uuid
 import json
 from fastapi import APIRouter, Request, HTTPException, status
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
+from src.app.utils.guest import is_guest
 from src.settings.settings import templates
 from src.base.lobby_redis import (
     create_lobby,
@@ -64,7 +65,7 @@ async def broadcast_lobby_state(lobby_id: str) -> None:
 @lobby_router.get("/lobby/new")
 async def lobby_new(request: Request):
     user_id = request.session.get("user_id")
-    if not user_id:
+    if not user_id or is_guest(user_id):
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     existing = await get_user_lobby(str(user_id))
     if existing:
@@ -76,7 +77,7 @@ async def lobby_new(request: Request):
 @lobby_router.get("/lobby/{lobby_id}", response_class=HTMLResponse, name="lobby_page")
 async def lobby_page(request: Request, lobby_id: str):
     user_id = request.session.get("user_id")
-    if not user_id:
+    if not user_id or is_guest(user_id):
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     lobby = await get_lobby(lobby_id)
     if not lobby or str(user_id) not in lobby.get("players", []):
@@ -102,7 +103,7 @@ async def api_lobby_info(lobby_id: str):
 @lobby_router.post("/api/lobby/color/{lobby_id}")
 async def api_lobby_color(request: Request, lobby_id: str):
     user_id = request.session.get("user_id")
-    if not user_id:
+    if not user_id or is_guest(user_id):
         raise HTTPException(status_code=401)
     lobby = await get_lobby(lobby_id)
     if not lobby or str(user_id) not in lobby.get("players", []):
@@ -119,7 +120,7 @@ async def api_lobby_color(request: Request, lobby_id: str):
 @lobby_router.post("/api/lobby/start/{lobby_id}")
 async def api_lobby_start(request: Request, lobby_id: str):
     user_id = request.session.get("user_id")
-    if not user_id:
+    if not user_id or is_guest(user_id):
         raise HTTPException(status_code=401)
     lobby = await get_lobby(lobby_id)
     if not lobby or lobby.get("host") != str(user_id):
@@ -153,7 +154,7 @@ async def api_lobby_start(request: Request, lobby_id: str):
 @lobby_router.post("/api/lobby/leave/{lobby_id}")
 async def api_lobby_leave(request: Request, lobby_id: str):
     user_id = request.session.get("user_id")
-    if not user_id:
+    if not user_id or is_guest(user_id):
         raise HTTPException(status_code=401)
     await remove_player(lobby_id, str(user_id))
     await broadcast_lobby_state(lobby_id)
@@ -163,7 +164,7 @@ async def api_lobby_leave(request: Request, lobby_id: str):
 @lobby_router.post("/api/lobby/kick/{lobby_id}")
 async def api_lobby_kick(request: Request, lobby_id: str):
     user_id = request.session.get("user_id")
-    if not user_id:
+    if not user_id or is_guest(user_id):
         raise HTTPException(status_code=401)
     lobby = await get_lobby(lobby_id)
     if not lobby or lobby.get("host") != str(user_id):
@@ -182,7 +183,7 @@ async def api_lobby_kick(request: Request, lobby_id: str):
 @lobby_router.post("/api/lobby/host/{lobby_id}")
 async def api_lobby_host(request: Request, lobby_id: str):
     user_id = request.session.get("user_id")
-    if not user_id:
+    if not user_id or is_guest(user_id):
         raise HTTPException(status_code=401)
     lobby = await get_lobby(lobby_id)
     if not lobby or lobby.get("host") != str(user_id):
@@ -199,7 +200,7 @@ async def api_lobby_host(request: Request, lobby_id: str):
 @lobby_router.post("/api/lobby/invite/{lobby_id}")
 async def api_lobby_invite(request: Request, lobby_id: str, to_id: int):
     user_id = request.session.get("user_id")
-    if not user_id:
+    if not user_id or is_guest(user_id):
         raise HTTPException(status_code=401)
     lobby = await get_lobby(lobby_id)
     if not lobby or lobby.get("host") != str(user_id):
@@ -216,7 +217,7 @@ async def api_lobby_invite(request: Request, lobby_id: str, to_id: int):
 @lobby_router.post("/api/lobby/respond/{lobby_id}")
 async def api_lobby_respond(request: Request, lobby_id: str, action: str):
     user_id = request.session.get("user_id")
-    if not user_id:
+    if not user_id or is_guest(user_id):
         raise HTTPException(status_code=401)
     lobby = await get_lobby(lobby_id)
     if not lobby:
@@ -253,7 +254,7 @@ async def api_lobby_messages(lobby_id: str):
 @lobby_router.get("/api/invites")
 async def api_get_invites(request: Request):
     user_id = request.session.get("user_id")
-    if not user_id:
+    if not user_id or is_guest(user_id):
         raise HTTPException(status_code=401)
     invites = await get_user_invites(str(user_id))
     rematch = await get_user_rematch_invites(str(user_id))
