@@ -353,6 +353,8 @@ async def api_resign(request: Request, board_id: str, action: PlayerAction):
     if players and players.get(action.player) != str(user_id):
         raise HTTPException(status_code=403, detail="Invalid player")
     board = await get_board_state(board_id, create=False)
+    history = await get_history(board_id)
+    rating_change = None
     status = "black_win" if action.player == "white" else "white_win"
     players = await get_board_players(board_id)
     if players and players.get("white").isdigit() and players.get("black").isdigit():
@@ -379,7 +381,6 @@ async def api_resign(request: Request, board_id: str, action: PlayerAction):
             "white_win": {"white": "win", "black": "loss"},
             "black_win": {"white": "loss", "black": "win"},
         }
-        history = await get_history(board_id)
         await save_recorded_game(
             board_id,
             white_id,
@@ -445,6 +446,7 @@ async def api_draw_response(request: Request, board_id: str, resp: DrawResponse)
     await clear_draw_offer(board_id)
     if resp.accept and offer and resp.player != offer:
         board = await get_board_state(board_id, create=False)
+        history = await get_history(board_id)
         players = await get_board_players(board_id)
         rating_change = None
         if players and players.get("white").isdigit() and players.get("black").isdigit():
@@ -456,7 +458,6 @@ async def api_draw_response(request: Request, board_id: str, resp: DrawResponse)
                 "white": await record_game_result(white_id, "draw", black_stats["elo"]),
                 "black": await record_game_result(black_id, "draw", white_stats["elo"]),
             }
-            history = await get_history(board_id)
             await save_recorded_game(
                 board_id,
                 white_id,
