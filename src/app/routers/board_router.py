@@ -19,6 +19,7 @@ from src.base.redis import (
     get_current_timers,
     apply_move_timer,
     apply_same_turn_timer,
+    freeze_timers,
     get_board_state_at,
     get_board_players,
     expire_board,
@@ -205,6 +206,9 @@ async def api_make_move(request: Request, board_id: str, req: MoveRequest):
         raise HTTPException(status_code=401)
     if not await board_exists(board_id):
         raise HTTPException(status_code=404)
+    timers = await get_current_timers(board_id, create=False)
+    if timers and timers.get("turn") not in ("white", "black"):
+        raise HTTPException(status_code=400, detail="Game finished")
     players = await get_board_players(board_id)
     if players and players.get(req.player) != str(user_id):
         raise HTTPException(status_code=403, detail="Invalid player")
@@ -312,6 +316,7 @@ async def api_make_move(request: Request, board_id: str, req: MoveRequest):
             await check_rating_achievements(white_id)
             await check_rating_achievements(black_id)
         current_timers = await get_current_timers(board_id, create=False)
+        await freeze_timers(board_id)
         await expire_board(board_id, delay=600)
         await clear_lobby_board(board_id)
 
@@ -396,6 +401,7 @@ async def api_resign(request: Request, board_id: str, action: PlayerAction):
         await check_rating_achievements(white_id)
         await check_rating_achievements(black_id)
     timers = await get_current_timers(board_id, create=False)
+    await freeze_timers(board_id)
     await expire_board(board_id, delay=600)
     await clear_lobby_board(board_id)
     result = MoveResult(
@@ -467,6 +473,7 @@ async def api_draw_response(request: Request, board_id: str, resp: DrawResponse)
             await check_rating_achievements(white_id)
             await check_rating_achievements(black_id)
         timers = await get_current_timers(board_id, create=False)
+        await freeze_timers(board_id)
         await expire_board(board_id, delay=600)
         await clear_lobby_board(board_id)
         result = MoveResult(
