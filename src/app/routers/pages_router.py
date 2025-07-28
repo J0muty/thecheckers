@@ -1,6 +1,7 @@
 from fastapi import Request, APIRouter
 from fastapi.responses import HTMLResponse
 from src.settings.settings import templates
+from src.app.utils.guest import is_guest
 
 pages_router = APIRouter()
 
@@ -14,6 +15,7 @@ async def home(request: Request):
         {
             "request": request,
             "user_id": str(user_id) if user_id else "",
+            "is_guest": is_guest(user_id),
             "flash": flash,
         },
     )

@@ -32,6 +32,7 @@ from src.base.hotseat_redis import (
 )
 from src.app.routers.ws_router import board_manager
 from src.base.postgres import record_game, save_recorded_game
+from src.app.utils.guest import is_guest
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +56,8 @@ async def _log_game_result(board_id: str, status: str):
         mode="hotseat",
         ranked=False,
     )
-    await record_game(int(user), "hotseat", status, None, game_id=board_id)
+    if str(user).isdigit():
+        await record_game(int(user), "hotseat", status, None, game_id=board_id)
 
 
 async def is_finished(board_id: str) -> bool:
@@ -91,8 +93,6 @@ class MoveResult(BaseModel):
 @hotseat_router.get("/hotseat", name="hotseat")
 async def hotseat_redirect(request: Request):
     user_id = request.session.get("user_id")
-    if not user_id:
-        return RedirectResponse("/login")
     existing_hotseat = await get_user_hotseat(str(user_id))
     if existing_hotseat:
         await cleanup_board(existing_hotseat)

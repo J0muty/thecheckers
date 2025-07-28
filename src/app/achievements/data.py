@@ -1,3 +1,4 @@
+# Позже
 PLAY_ACHIEVEMENTS = [
     {"code": "games_1", "title": "Молниеносный старт", "desc": "Сыграйте свою первую игру", "icon": "fa-bolt", "threshold": 1},
     {"code": "games_10", "title": "Десятка опыта", "desc": "Сыграйте 10 игр", "icon": "fa-gamepad", "threshold": 10},
@@ -8,6 +9,7 @@ PLAY_ACHIEVEMENTS = [
     {"code": "games_1000", "title": "Тысячник", "desc": "Сыграйте 1000 игр", "icon": "fa-infinity", "threshold": 1000},
 ]
 
+# Позже
 WIN_ACHIEVEMENTS = [
     {"code": "wins_1", "title": "Первая кровь", "desc": "Одержите первую победу", "icon": "fa-flag-checkered", "threshold": 1},
     {"code": "wins_10", "title": "Победитель 10", "desc": "Одержите 10 побед", "icon": "fa-crown", "threshold": 10},
@@ -18,6 +20,7 @@ WIN_ACHIEVEMENTS = [
     {"code": "wins_1000", "title": "Килопобеда", "desc": "Одержите 1000 побед", "icon": "fa-chess-king", "threshold": 1000},
 ]
 
+# Позже
 STREAK_ACHIEVEMENTS = [
     {"code": "streak_win_3", "title": "Серия 3", "desc": "Победите 3 раза подряд", "icon": "fa-fire", "threshold": 3},
     {"code": "streak_win_5", "title": "Серия 5", "desc": "Победите 5 раз подряд", "icon": "fa-fire-flame-curved", "threshold": 5},
@@ -26,6 +29,7 @@ STREAK_ACHIEVEMENTS = [
     {"code": "streak_unbeaten_20", "title": "Непобеждённый", "desc": "20 игр подряд без поражений", "icon": "fa-shield-halved", "threshold": 20},
 ]
 
+# Позже
 PERFORMANCE_ACHIEVEMENTS = [
     {"code": "perfect_game", "title": "Идеальная партия", "desc": "Выиграйте, не потеряв ни одной шашки", "icon": "fa-check-double"},
     {"code": "combo_3", "title": "Комбо ×3", "desc": "Захватите 3 шашки одним ходом", "icon": "fa-xmarks-lines", "threshold": 3},
@@ -37,6 +41,7 @@ PERFORMANCE_ACHIEVEMENTS = [
     {"code": "draw_last_piece", "title": "Ничья на волоске", "desc": "Сведите партию вничью, имея одну шашку", "icon": "fa-scale-balanced"},
 ]
 
+# Отслеживается
 RATING_ACHIEVEMENTS = [
     {"code": "rank_bronze_1", "title": "Бронза I", "desc": "Достигните рейтинга 300 (Бронза I)", "icon": "fa-arrow-trend-up", "threshold": 300},
     {"code": "rank_bronze_2", "title": "Бронза II", "desc": "Достигните рейтинга 600 (Бронза II)", "icon": "fa-arrow-trend-up", "threshold": 600},
@@ -55,6 +60,7 @@ RATING_ACHIEVEMENTS = [
     {"code": "elo_plus_500_week", "title": "Гиперрост +500", "desc": "Поднимите рейтинг на 500 за неделю", "icon": "fa-rocket", "threshold": 500},
 ]
 
+# Позже
 TIME_ACHIEVEMENTS = [
     {"code": "fast_win_2min", "title": "Скоростной матч", "desc": "Выиграйте партию менее чем за 2 минуты", "icon": "fa-hourglass-start", "threshold": 120},
     {"code": "win_by_time", "title": "Время вышло", "desc": "Победите соперника по таймеру", "icon": "fa-stopwatch"},

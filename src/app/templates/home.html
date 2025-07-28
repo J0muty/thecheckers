@@ -80,7 +80,9 @@
             <h2 class="modal-title">Выберите режим</h2>
             <div class="modal-menu">
                 <button id="netSearchBtn" class="btn" type="button">Поиск</button>
+                {% if not is_guest %}
                 <button id="netLobbyBtn" class="btn" type="button">Лобби</button>
+                {% endif %}
                 <button id="netBoardBtn" class="btn" type="button">Одна доска</button>
             </div>
         </div>

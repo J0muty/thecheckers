@@ -248,29 +248,35 @@ async function updateStatus() {
 
 document.addEventListener('DOMContentLoaded', () => {
     updateStatus();
+
     if (singleBtn) {
         singleBtn.addEventListener('click', () => {
             singleModal.classList.add('active');
         });
-        singleCloseBtn.addEventListener('click', () => {
-            singleModal.classList.remove('active');
-        });
-        startSingleBtn.addEventListener('click', async () => {
-            if (currentSingleId) {
-                showNotification('Вы уже находитесь в игре с ботом', 'error');
-                return;
-            }
-            const diff = document.querySelector('input[name="difficulty"]:checked').value;
-            const color = document.querySelector('input[name="spcolor"]:checked').value;
-            const res = await fetch('/api/single/start', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ difficulty: diff, color })
+        if (singleCloseBtn) {
+            singleCloseBtn.addEventListener('click', () => {
+                singleModal.classList.remove('active');
             });
-            const data = await res.json();
-            window.location.href = `/singleplayer/${data.game_id}`;
-        });
+        }
+        if (startSingleBtn) {
+            startSingleBtn.addEventListener('click', async () => {
+                if (currentSingleId) {
+                    showNotification('Вы уже находитесь в игре с ботом', 'error');
+                    return;
+                }
+                const diff = document.querySelector('input[name="difficulty"]:checked').value;
+                const color = document.querySelector('input[name="spcolor"]:checked').value;
+                const res = await fetch('/api/single/start', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ difficulty: diff, color })
+                });
+                const data = await res.json();
+                window.location.href = `/singleplayer/${data.game_id}`;
+            });
+        }
     }
+
     if (netBtn) {
         netBtn.addEventListener('click', e => {
             e.preventDefault();
@@ -280,22 +286,29 @@ document.addEventListener('DOMContentLoaded', () => {
                 netModal.classList.add('active');
             }
         });
-        netSearchBtn.addEventListener('click', () => {
+
+        netSearchBtn && netSearchBtn.addEventListener('click', () => {
             window.location.href = '/waiting';
         });
-        netLobbyBtn.addEventListener('click', () => {
+
+        netLobbyBtn && netLobbyBtn.addEventListener('click', () => {
             window.location.href = '/lobby/new';
         });
-        netBoardBtn.addEventListener('click', () => {
+
+        netBoardBtn && netBoardBtn.addEventListener('click', () => {
             window.location.href = '/hotseat';
         });
     }
-    [leaveModal, singleModal, netModal].forEach(o => {
-        o.addEventListener('click', e => { if (e.target === o) o.classList.remove('active'); });
+
+    [leaveModal, singleModal, netModal].filter(Boolean).forEach(o => {
+        o.addEventListener('click', e => {
+            if (e.target === o) o.classList.remove('active');
+        });
     });
+
     document.addEventListener('keydown', e => {
         if (e.key === 'Escape') {
-            [leaveModal, singleModal, netModal].forEach(o => o.classList.remove('active'));
+            [leaveModal, singleModal, netModal].filter(Boolean).forEach(o => o.classList.remove('active'));
         }
     });
 });
