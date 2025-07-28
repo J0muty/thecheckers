@@ -82,9 +82,14 @@ async def api_user_status(request: Request):
     })
 
 @waiting_router.post("/api/cancel_game")
-async def api_cancel_game(request: Request):
+async def api_cancel_game(request: Request, timeout: bool = False):
     user_id = request.session.get("user_id")
     if not user_id:
         raise HTTPException(status_code=401)
     await cancel_waiting(str(user_id))
+    if timeout:
+        request.session["flash"] = {
+            "message": "Игра не была найдена",
+            "type": "error",
+        }
     return JSONResponse({"status": "ok"})
