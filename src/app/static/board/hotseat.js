@@ -72,7 +72,7 @@ function pieceCaptureMovesLocal(board, r, c, player) {
             const nr = r + dr, nc = c + dc;
             if (withinBounds(nr, nc) && board[nr][nc] === null &&
                 board[mr][mc] && isOpponent(board[mr][mc], player)) {
-                caps.push([nr, nc]);
+                    caps.push([nr, nc]);
             }
         }
     } else {
@@ -120,7 +120,6 @@ function computeForcedPieces() {
 async function autoMoveIfSingle() {
     if (viewingHistory || gameOver || isPerformingAutoMove) return;
     if (myColor && turn !== myColor) return;
-
     if (forcedPieces.length === 1 && forcedPieces[0].moves.length === 1) {
         isPerformingAutoMove = true;
         try {
@@ -139,6 +138,7 @@ async function autoMoveIfSingle() {
 }
 
 async function handleUpdate(data) {
+    const finished = data.status && ['white_win','black_win','draw','ended'].includes(data.status);
     boardState = data.board;
     timers = data.timers;
     timerStart = Date.now();
@@ -151,18 +151,19 @@ async function handleUpdate(data) {
         if (data.players.black) player2.querySelector('.player-name').textContent = data.players.black;
     }
     returnButton.style.display = 'none';
+    if (finished) gameOver = true;
     setActivePlayer(turn);
-    startTimers();
+    if (!gameOver && (turn === 'white' || turn === 'black')) {
+        startTimers();
+    } else {
+        stopTimers();
+    }
     computeForcedPieces();
     renderBoard();
-
-    if (!isPerformingAutoMove) {
+    if (!gameOver && !isPerformingAutoMove) {
         await autoMoveIfSingle();
     }
-
-    if (data.status && !gameOver) {
-        gameOver = true;
-        stopTimers();
+    if (finished) {
         let msg = '';
         if (data.status === 'white_win') msg = 'Белые победили!';
         else if (data.status === 'black_win') msg = 'Чёрные победили!';
@@ -170,6 +171,7 @@ async function handleUpdate(data) {
         else msg = 'Игра окончена';
         resultText.textContent = msg;
         showModal(resultModal);
+        stopTimers();
     }
 }
 
@@ -205,9 +207,7 @@ async function performMove(startR, startC, endR, endC, isCapture) {
         alert(data.detail || 'Неверный ход');
         return;
     }
-
     await handleUpdate(data);
-
     if (isCapture) {
         const nextCaps = await fetchCaptures(endR, endC);
         if (nextCaps.length === 1) {
@@ -215,7 +215,6 @@ async function performMove(startR, startC, endR, endC, isCapture) {
             possibleMoves = nextCaps;
             renderBoard();
             await delay(300);
-
             await performMove(endR, endC, nextCaps[0][0], nextCaps[0][1], true);
             return;
         } else if (nextCaps.length > 0) {
@@ -354,7 +353,7 @@ async function onHistoryClick(e) {
     }
     const data = await (await fetch(`/api/hotseat/snapshot/${boardId}/${idx}`)).json();
     boardState = data;
-    clearInterval(timerInterval);
+    if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
     viewingHistory = true;
     viewedMoveIndex = idx;
     highlightHistoryItem(idx);
@@ -393,6 +392,12 @@ function formatTime(t) {
 }
 
 function updateTimerDisplay() {
+    const active = timers.turn === 'white' || timers.turn === 'black';
+    if (gameOver || !active) {
+        timer1.textContent = formatTime(timers.white);
+        timer2.textContent = formatTime(timers.black);
+        return;
+    }
     const elapsed = (Date.now() - timerStart) / 1000;
     let w = timers.white;
     let b = timers.black;
@@ -403,19 +408,25 @@ function updateTimerDisplay() {
     }
     timer1.textContent = formatTime(w);
     timer2.textContent = formatTime(b);
-    if (!gameOver && (w <= 0 || b <= 0)) {
-        clearInterval(timerInterval);
+    if (w <= 0 || b <= 0) {
+        if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
         checkTimeout();
     }
 }
 
 function stopTimers() {
-    clearInterval(timerInterval);
+    if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+    }
     updateTimerDisplay();
 }
 
 function startTimers() {
-    clearInterval(timerInterval);
+    if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+    }
     updateTimerDisplay();
     if (!gameOver && (timers.turn === 'white' || timers.turn === 'black')) {
         timerInterval = setInterval(updateTimerDisplay, 1000);
@@ -431,9 +442,7 @@ async function checkTimeout() {
                 await handleUpdate(data);
             }
         }
-    } catch (e) {
-        console.error('timeout check failed', e);
-    }
+    } catch (e) {}
 }
 
 function buildWsUrl() {
@@ -444,6 +453,7 @@ function buildWsUrl() {
 function setupWebSocket() {
     const ws = new WebSocket(buildWsUrl());
     ws.addEventListener('message', async (e) => {
+        if (gameOver) return;
         const data = JSON.parse(e.data);
         await handleUpdate(data);
     });
@@ -482,6 +492,7 @@ document.addEventListener('click', () => {
 });
 
 function endHotseat() {
+    gameOver = true;
     stopTimers();
     fetch(`/api/hotseat/end/${boardId}`, { method: 'POST' }).catch(() => {});
 }
@@ -492,6 +503,7 @@ document.getElementById('menuHome').addEventListener('click', () => {
 
 document.getElementById('menuEnd').addEventListener('click', async () => {
     rightSidebar.classList.remove('open');
+    gameOver = true;
     stopTimers();
     const res = await fetch(`/api/hotseat/end/${boardId}`, { method: 'POST' });
     if (res.ok) {
