@@ -4,8 +4,9 @@ let seconds = 0;
 let timerInterval = null;
 let ws = null;
 
-function cancelSearch() {
-    navigator.sendBeacon('/api/cancel_game');
+function cancelSearch(timeout = false) {
+    const url = timeout ? '/api/cancel_game?timeout=1' : '/api/cancel_game';
+    navigator.sendBeacon(url);
 }
 
 function formatTime(s) {
@@ -18,6 +19,7 @@ async function startTimer() {
     const res = await fetch('/api/user_status');
     const data = await res.json();
     if (data.timeout) {
+        cancelSearch(true);
         window.location.href = '/';
         return;
     }
@@ -31,7 +33,7 @@ async function startTimer() {
         seconds += 1;
         timerEl.textContent = formatTime(seconds);
         if (seconds >= 600) {
-            cancelSearch();
+            cancelSearch(true);
             clearInterval(timerInterval);
             window.location.href = '/';
             return;
@@ -40,6 +42,7 @@ async function startTimer() {
             const resp = await fetch('/api/user_status');
             const info = await resp.json();
             if (info.timeout) {
+                cancelSearch(true);
                 clearInterval(timerInterval);
                 window.location.href = '/';
             }
@@ -101,6 +104,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         showNotification('Вы уже находитесь в сетевой игре', 'error');
         return;
     } else if (data.timeout) {
+        cancelSearch(true);
         window.location.href = '/';
         return;
     } else if (data.waiting_since) {
