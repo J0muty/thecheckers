@@ -345,6 +345,7 @@ async def api_make_move(game_id: str, req: MoveRequest):
         await _log_game_result(game_id, status)
         history = await get_history(game_id)
         timers = await get_current_timers(game_id, create=False)
+        await freeze_timers(game_id)
         await expire_board(game_id, delay=600)
     else:
         history = await get_history(game_id)

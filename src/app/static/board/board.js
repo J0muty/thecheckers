@@ -170,6 +170,7 @@ async function handleUpdate(data) {
 
     if (data.status && !gameOver) {
         gameOver = true;
+        stopTimers();
         let msg = '';
         if (data.status === 'white_win' || data.status === 'black_win') {
             const winner = data.status === 'white_win' ? 'white' : 'black';
@@ -445,10 +446,17 @@ function updateTimerDisplay() {
     }
 }
 
+function stopTimers() {
+    clearInterval(timerInterval);
+    updateTimerDisplay();
+}
+
 function startTimers() {
     clearInterval(timerInterval);
     updateTimerDisplay();
-    timerInterval = setInterval(updateTimerDisplay, 1000);
+    if (!gameOver) {
+        timerInterval = setInterval(updateTimerDisplay, 1000);
+    }
 }
 
 async function checkTimeout() {
