@@ -66,18 +66,6 @@ async def achievements(request: Request):
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     return templates.TemplateResponse("achievements.html", {"request": request})
 
-@profile_router.get("/profile/report", response_class=HTMLResponse, name="report")
-async def report_bug(request: Request):
-    user_id = request.session.get("user_id")
-    if not user_id:
-        return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
-    uid = int(user_id)
-    username = await get_user_login(uid) or str(uid)
-    email = await get_user_email(uid) or ""
-    return templates.TemplateResponse(
-        "report.html", {"request": request, "username": username, "email": email}
-    )
-
 @profile_router.get("/api/friends")
 async def api_friends(request: Request):
     user_id = request.session.get("user_id")

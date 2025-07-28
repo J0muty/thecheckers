@@ -16,6 +16,7 @@ from src.app.routers import (
     lobby_router,
     ws_router,
     chat_router,
+    report_router
 )
 from src.settings.settings import static_files
 from src.base import postgres, redis
@@ -45,6 +46,7 @@ app.include_router(lobby_router)
 app.include_router(ws_router)
 app.include_router(single_router)
 app.include_router(chat_router)
+app.include_router(report_router)
 
 app.mount("/static", static_files, name="static")
 
