@@ -2,7 +2,7 @@ import json
 from datetime import datetime
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.pool import NullPool
-from sqlalchemy import text, select
+from sqlalchemy import text, select, func
 from sqlalchemy.engine import URL
 from src.base.postgres_models import (
     Base,
@@ -300,6 +300,17 @@ async def get_user_history(user_id: int, session: AsyncSession, offset: int = 0,
         }
         for g in games
     ]
+
+@connect
+async def count_bot_results(user_id: int, difficulty: str, result: str, session: AsyncSession) -> int:
+    mode = f"single_{difficulty}"
+    stmt = select(func.count()).select_from(GameHistory).where(
+        GameHistory.user_id == user_id,
+        GameHistory.mode == mode,
+        GameHistory.result == result,
+    )
+    q = await session.execute(stmt)
+    return q.scalar_one()
 
 @connect
 async def set_2fa_secret(user_id: int, secret: str, session: AsyncSession) -> None:

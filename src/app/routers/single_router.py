@@ -26,6 +26,7 @@ from src.base.single_redis import (
     get_game_user,
 )
 from src.base.postgres import record_game, save_recorded_game
+from src.app.achievements.bots import check_bot_achievements
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +52,7 @@ async def _log_game_result(game_id: str, status: str):
     else:
         return
     history = await get_history(game_id)
+    difficulty = game_difficulties.get(game_id, "easy")
     white_id = int(user) if color == "white" else None
     black_id = int(user) if color == "black" else None
     await save_recorded_game(
@@ -62,7 +64,10 @@ async def _log_game_result(game_id: str, status: str):
         mode="single",
         ranked=False,
     )
-    await record_game(int(user), "single", res, None, game_id=game_id)
+    await record_game(int(user), f"single_{difficulty}", res, None, game_id=game_id)
+    await check_bot_achievements(int(user), difficulty, res)
+    game_difficulties.pop(game_id, None)
+    game_colors.pop(game_id, None)
 
 
 class MoveRequest(BaseModel):
