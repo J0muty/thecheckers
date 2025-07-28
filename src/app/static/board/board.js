@@ -208,7 +208,12 @@ async function handleUpdate(data) {
 }
 
 async function fetchBoard() {
-    const data = await (await fetch(`/api/board/${boardId}`)).json();
+        const res = await fetch(`/api/board/${boardId}`);
+    if (!res.ok) {
+        console.error('Failed to fetch board', res.status);
+        return;
+    }
+    const data = await res.json();
     await handleUpdate(data);
 }
 

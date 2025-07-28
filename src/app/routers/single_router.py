@@ -20,7 +20,7 @@ from src.base.single_redis import (
     apply_move_timer,
     apply_same_turn_timer,
     get_board_state_at,
-    cleanup_board,
+    expire_board,
     assign_user_game,
     get_user_game,
     get_game_user,
@@ -255,7 +255,7 @@ async def api_make_move(game_id: str, req: MoveRequest):
                 await _log_game_result(game_id, status)
                 history = await get_history(game_id)
                 timers_view = await get_current_timers(game_id, create=False)
-                await cleanup_board(game_id)
+                await expire_board(game_id, delay=600)
                 result = MoveResult(
                     board=new_board,
                     status=status,
@@ -280,7 +280,7 @@ async def api_make_move(game_id: str, req: MoveRequest):
         await _log_game_result(game_id, status)
         history = await get_history(game_id)
         timers_view = await get_current_timers(game_id, create=False)
-        await cleanup_board(game_id)
+        await expire_board(game_id, delay=600)
         result = MoveResult(
             board=new_board,
             status=status,
@@ -294,7 +294,7 @@ async def api_make_move(game_id: str, req: MoveRequest):
         await _log_game_result(game_id, status)
         history = await get_history(game_id)
         timers_view = await get_current_timers(game_id, create=False)
-        await cleanup_board(game_id)
+        await expire_board(game_id, delay=600)
         result = MoveResult(
             board=new_board,
             status=status,
@@ -339,7 +339,7 @@ async def api_make_move(game_id: str, req: MoveRequest):
         await _log_game_result(game_id, status)
         history = await get_history(game_id)
         timers = await get_current_timers(game_id, create=False)
-        await cleanup_board(game_id)
+        await expire_board(game_id, delay=600)
     else:
         history = await get_history(game_id)
         timers = await get_current_timers(game_id)
@@ -367,7 +367,7 @@ async def api_resign(game_id: str, req: PlayerAction):
     await _log_game_result(game_id, status)
     history = await get_history(game_id)
     timers = await get_current_timers(game_id, create=False)
-    await cleanup_board(game_id)
+    await expire_board(game_id, delay=600)
     result = MoveResult(board=board, status=status, history=history, timers=timers)
     await single_board_manager.broadcast(game_id, result.json())
     return result
@@ -387,7 +387,7 @@ async def api_single_check_timeout(game_id: str):
     if not status:
         return MoveResult(board=board, status=None, history=history, timers=timers)
     await _log_game_result(game_id, status)
-    await cleanup_board(game_id)
+    await expire_board(game_id, delay=600)
     result = MoveResult(board=board, status=status, history=history, timers=timers)
     await single_board_manager.broadcast(game_id, result.json())
     return result

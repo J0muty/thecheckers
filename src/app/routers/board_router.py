@@ -20,7 +20,7 @@ from src.base.redis import (
     apply_same_turn_timer,
     get_board_state_at,
     get_board_players,
-    cleanup_board,
+    expire_board,
     set_draw_offer,
     get_draw_offer,
     clear_draw_offer,
@@ -311,7 +311,7 @@ async def api_make_move(request: Request, board_id: str, req: MoveRequest):
             await check_rating_achievements(white_id)
             await check_rating_achievements(black_id)
         current_timers = await get_current_timers(board_id, create=False)
-        await cleanup_board(board_id)
+        await expire_board(board_id, delay=600)
         await clear_lobby_board(board_id)
 
     else:
@@ -395,7 +395,7 @@ async def api_resign(request: Request, board_id: str, action: PlayerAction):
         await check_rating_achievements(white_id)
         await check_rating_achievements(black_id)
     timers = await get_current_timers(board_id, create=False)
-    await cleanup_board(board_id)
+    await expire_board(board_id, delay=600)
     await clear_lobby_board(board_id)
     result = MoveResult(
         board=board,
@@ -466,7 +466,7 @@ async def api_draw_response(request: Request, board_id: str, resp: DrawResponse)
             await check_rating_achievements(white_id)
             await check_rating_achievements(black_id)
         timers = await get_current_timers(board_id, create=False)
-        await cleanup_board(board_id)
+        await expire_board(board_id, delay=600)
         await clear_lobby_board(board_id)
         result = MoveResult(
             board=board,
@@ -545,7 +545,7 @@ async def api_check_timeout(board_id: str):
         await check_rating_achievements(white_id)
         await check_rating_achievements(black_id)
 
-    await cleanup_board(board_id)
+    await expire_board(board_id, delay=600)
     await clear_lobby_board(board_id)
     result = MoveResult(
         board=board,
