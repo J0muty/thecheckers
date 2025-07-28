@@ -77,6 +77,7 @@ class MoveRequest(BaseModel):
     start: Point
     end: Point
     player: str
+    history_len: int
 
 
 class Timers(BaseModel):
@@ -229,10 +230,12 @@ async def api_make_move(game_id: str, req: MoveRequest):
     if not await game_exists(game_id):
         raise HTTPException(status_code=404)
     timers_check = await get_current_timers(game_id, create=False)
-    if timers_check and timers_check.get("turn") not in ("white", "black"):
-        raise HTTPException(status_code=400, detail="Game finished")
+    if timers_check and timers_check.get("turn") != req.player:
+        raise HTTPException(status_code=409, detail="Not your turn")
     board = await get_board_state(game_id, create=False)
     history_before = await get_history(game_id)
+    if len(history_before) != req.history_len:
+        raise HTTPException(status_code=409, detail="Out of sync")
     try:
         new_board = await validate_move(board, req.start, req.end, req.player)
     except ValueError as e:

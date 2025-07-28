@@ -37,6 +37,8 @@ let viewingHistory = false;
 let forcedPieces = [];
 let viewedMoveIndex = 0;
 let isPerformingAutoMove = false;
+let pendingMove = false;
+let lastHistoryLen = 0;
 
 function delay(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -119,23 +121,17 @@ function computeForcedPieces() {
 }
 
 async function autoMoveIfSingle() {
-    if (viewingHistory || gameOver || isPerformingAutoMove) return;
+    if (viewingHistory || gameOver || isPerformingAutoMove || pendingMove || multiCapture) return;
     if (myColor && turn !== myColor) return;
-
     if (forcedPieces.length === 1 && forcedPieces[0].moves.length === 1) {
         isPerformingAutoMove = true;
-        try {
-            await fetchBoard();
-            if (!(forcedPieces.length === 1 && forcedPieces[0].moves.length === 1)) return;
-            const fp = forcedPieces[0];
-            selected = { row: fp.row, col: fp.col, isCapture: true };
-            possibleMoves = fp.moves;
-            renderBoard();
-            await delay(300);
-            await performMove(fp.row, fp.col, fp.moves[0][0], fp.moves[0][1], true);
-        } finally {
-            isPerformingAutoMove = false;
-        }
+        const fp = forcedPieces[0];
+        selected = { row: fp.row, col: fp.col, isCapture: true };
+        possibleMoves = fp.moves;
+        renderBoard();
+        await delay(300);
+        await performMove(fp.row, fp.col, fp.moves[0][0], fp.moves[0][1], true);
+        isPerformingAutoMove = false;
     }
 }
 
@@ -145,6 +141,7 @@ async function handleUpdate(data) {
     timerStart = Date.now();
     turn = data.timers.turn;
     viewedMoveIndex = data.history.length;
+    lastHistoryLen = data.history.length;
     updateHistory(data.history);
     viewingHistory = false;
     returnButton.style.display = 'none';
@@ -156,11 +153,9 @@ async function handleUpdate(data) {
     startTimers();
     computeForcedPieces();
     renderBoard();
-
     if (!isPerformingAutoMove) {
         await autoMoveIfSingle();
     }
-
     if (data.status && !gameOver) {
         gameOver = true;
         stopTimers();
@@ -191,23 +186,26 @@ async function fetchCaptures(r, c) {
 }
 
 async function performMove(startR, startC, endR, endC, isCapture) {
+    if (pendingMove) return;
+    pendingMove = true;
+    const playerToSend = myColor || turn;
     const res = await fetch(`/api/single/move/${boardId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             start: [startR, startC],
             end: [endR, endC],
-            player: turn
+            player: playerToSend,
+            history_len: lastHistoryLen
         })
     });
     const data = await res.json();
     if (!res.ok) {
         alert(data.detail || 'Неверный ход');
+        pendingMove = false;
         return;
     }
-
     await handleUpdate(data);
-
     if (isCapture) {
         const nextCaps = await fetchCaptures(endR, endC);
         if (nextCaps.length === 1) {
@@ -215,14 +213,15 @@ async function performMove(startR, startC, endR, endC, isCapture) {
             possibleMoves = nextCaps;
             renderBoard();
             await delay(300);
-
             await performMove(endR, endC, nextCaps[0][0], nextCaps[0][1], true);
+            pendingMove = false;
             return;
         } else if (nextCaps.length > 0) {
             selected = { row: endR, col: endC, isCapture: true };
             possibleMoves = nextCaps;
             multiCapture = true;
             renderBoard();
+            pendingMove = false;
             return;
         }
     }
@@ -230,6 +229,7 @@ async function performMove(startR, startC, endR, endC, isCapture) {
     selected = null;
     possibleMoves = [];
     renderBoard();
+    pendingMove = false;
     await autoMoveIfSingle();
 }
 
@@ -443,7 +443,7 @@ function buildWsUrl() {
 
 function setupWebSocket() {
     const ws = new WebSocket(buildWsUrl());
-        ws.addEventListener('open', () => {
+    ws.addEventListener('open', () => {
         fetchBoard();
     });
     ws.addEventListener('message', async (e) => {
