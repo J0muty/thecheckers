@@ -150,13 +150,14 @@ async def get_current_timers(board_id: str, create: bool = True):
     timers = await _read_timers(board_id, create=create)
     if timers is None:
         return None
-    now = time.time()
-    active = timers["turn"]
-    elapsed = now - timers["last_ts"]
-    timers_view = timers.copy()
-    timers_view[active] = max(0, timers_view[active] - elapsed)
-    return timers_view
-
+    turn = timers.get("turn")
+    if turn in ("white", "black"):
+        now = time.time()
+        elapsed = now - timers["last_ts"]
+        timers_view = timers.copy()
+        timers_view[turn] = max(0, timers_view[turn] - elapsed)
+        return timers_view
+    return timers
 
 async def apply_move_timer(board_id: str, player: str):
     timers = await _read_timers(board_id)
@@ -180,6 +181,21 @@ async def apply_same_turn_timer(board_id: str, player: str):
     await redis_client.set(key, json.dumps(timers))
     return timers
 
+
+async def freeze_timers(board_id: str):
+    timers = await _read_timers(board_id, create=False)
+    if timers is None:
+        return None
+    turn = timers.get("turn")
+    if turn in ("white", "black"):
+        now = time.time()
+        elapsed = now - timers["last_ts"]
+        timers[turn] = max(0, timers[turn] - elapsed)
+        timers["last_ts"] = now
+    timers["turn"] = "stopped"
+    key = f"{REDIS_KEY_PREFIX}:{board_id}:{TIMER_KEY_PREFIX}"
+    await redis_client.set(key, json.dumps(timers))
+    return timers
 
 async def get_board_state_at(board_id: str, index: int) -> Board:
     history = await get_history(board_id)

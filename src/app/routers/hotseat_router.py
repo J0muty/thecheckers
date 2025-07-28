@@ -24,6 +24,7 @@ from src.base.hotseat_redis import (
     get_current_timers,
     apply_move_timer,
     apply_same_turn_timer,
+    freeze_timers,
     get_board_state_at,
     expire_board,
     get_game_user,
@@ -166,6 +167,9 @@ async def api_hotseat_captures(board_id: str, row: int, col: int, player: str):
 async def api_hotseat_move(board_id: str, req: MoveRequest):
     if not await game_exists(board_id):
         raise HTTPException(status_code=404)
+    timers_check = await get_current_timers(board_id, create=False)
+    if timers_check and timers_check.get("turn") not in ("white", "black"):
+        raise HTTPException(status_code=400, detail="Game finished")
     board = await get_board_state(board_id, create=False)
     try:
         new_board = await validate_move(board, req.start, req.end, req.player)
@@ -194,6 +198,7 @@ async def api_hotseat_move(board_id: str, req: MoveRequest):
         await _log_game_result(board_id, status)
         history = await get_history(board_id)
         timers_view = await get_current_timers(board_id, create=False)
+        await freeze_timers(board_id)
         await expire_board(board_id, delay=600)
     else:
         history = await get_history(board_id)
@@ -226,6 +231,7 @@ async def api_hotseat_check_timeout(board_id: str):
         status = "black_win" if active == "white" else "white_win"
     if status:
         await _log_game_result(board_id, status)
+        await freeze_timers(board_id)
         await expire_board(board_id, delay=600)
     result = MoveResult(board=board, status=status, history=history, timers=timers)
     await board_manager.broadcast(board_id, result.json())
@@ -240,6 +246,7 @@ async def api_hotseat_end(request: Request, board_id: str):
     history = await get_history(board_id)
     timers = await get_current_timers(board_id)
     await _log_game_result(board_id, "ended")
+    await freeze_timers(board_id)
     await expire_board(board_id, delay=600)
     user_id = request.session.get("user_id")
     if user_id:
