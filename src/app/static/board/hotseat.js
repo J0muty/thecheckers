@@ -482,6 +482,7 @@ document.addEventListener('click', () => {
 });
 
 function endHotseat() {
+    stopTimers();
     fetch(`/api/hotseat/end/${boardId}`, { method: 'POST' }).catch(() => {});
 }
 
@@ -491,6 +492,7 @@ document.getElementById('menuHome').addEventListener('click', () => {
 
 document.getElementById('menuEnd').addEventListener('click', async () => {
     rightSidebar.classList.remove('open');
+    stopTimers();
     const res = await fetch(`/api/hotseat/end/${boardId}`, { method: 'POST' });
     if (res.ok) {
         const data = await res.json();
