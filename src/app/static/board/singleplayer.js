@@ -146,8 +146,8 @@ async function handleUpdate(data) {
     viewingHistory = false;
     returnButton.style.display = 'none';
     if (data.players) {
-        if (data.players.white) player1.querySelector('.player-name').textContent = data.players.white;
-        if (data.players.black) player2.querySelector('.player-name').textContent = data.players.black;
+        if (data.players.white) player1.querySelector('.player-name').textContent = data.players.white.slice(0, 8);
+        if (data.players.black) player2.querySelector('.player-name').textContent = data.players.black.slice(0, 8);а
     }
     setActivePlayer(turn);
     startTimers();
@@ -201,7 +201,7 @@ async function performMove(startR, startC, endR, endC, isCapture) {
     });
     const data = await res.json();
     if (!res.ok) {
-        alert(data.detail || 'Неверный ход');
+        showNotification(data.detail || 'Неверный ход', 'error');
         pendingMove = false;
         return;
     }
