@@ -9,8 +9,10 @@ function cancelSearch(timeout = false) {
     const url = timeout ? '/api/cancel_game?timeout=1' : '/api/cancel_game';
     navigator.sendBeacon(url);
 }
-const formatTime = s =>
-    `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
+const formatTime = s => {
+    s = Math.max(0, s);
+    return `${Math.floor(s / 60).toString().padStart(2, '0')}:${Math.floor(s % 60).toString().padStart(2, '0')}`;
+};
 
 async function startTimer() {
     const res  = await fetch('/api/user_status');
