@@ -26,7 +26,7 @@ async function startTimer() {
     const start = data.waiting_since
         ? data.waiting_since * 1000
         : Date.now();
-    seconds = Math.floor((Date.now() - start) / 1000);
+    seconds = Math.floor(Math.max(Date.now() - start, 0) / 1000);
     timerEl.textContent = formatTime(seconds);
     clearInterval(timerInterval);
     timerInterval = setInterval(async () => {
