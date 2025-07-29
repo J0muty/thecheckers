@@ -2,10 +2,10 @@
 
 :root {
     --background-color: #f3f4f6;
-    --surface-color: #ffffff;
-    --accent-color:  #3B82F6;
-    --button-color:  #2563EB;
-    --text-color:    #111827;
+    --surface-color:    #ffffff;
+    --accent-color:     #3B82F6;
+    --button-color:     #2563EB;
+    --text-color:       #111827;
     --secondary-text-color: #6B7280;
     --font-family: 'Rubik', sans-serif;
     --border-radius: 12px;
@@ -13,11 +13,11 @@
 
 .dark-mode {
     --background-color: #1F2937;
-    --surface-color:   #111827;
-    --button-color:    #1E40AF;
-    --text-color:      #F9FAFB;
+    --surface-color:    #111827;
+    --button-color:     #1E40AF;
+    --text-color:       #F9FAFB;
     --secondary-text-color: #9CA3AF;
-    --accent-color:    #3B82F6;
+    --accent-color:     #3B82F6;
 }
 
 * {
@@ -30,6 +30,9 @@ html,
 body {
     width: 100%;
     height: 100%;
+    min-width: 350px;
+    min-height: 350px;
+    overflow: auto;
     background: var(--background-color);
     color: var(--text-color);
     font-family: var(--font-family);
@@ -41,7 +44,7 @@ body {
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    height: 100vh;
+    min-height: 100vh;
     gap: 20px;
 }
 
@@ -74,11 +77,5 @@ body {
     transition: background-color 0.3s ease, transform 0.2s ease;
 }
 
-#cancelBtn:hover {
-    background: var(--accent-color);
-    transform: translateY(-1px);
-}
-
-#cancelBtn:active {
-    transform: translateY(0);
-}
+#cancelBtn:hover   { background: var(--accent-color); transform: translateY(-1px); }
+#cancelBtn:active  { transform: translateY(0); }
