@@ -61,7 +61,7 @@ async def get_board_state(board_id: str, create: bool = True):
     if not raw:
         if not create:
             return None
-        board = await create_initial_board()
+        board = create_initial_board()
         await redis_client.set(key, json.dumps(board))
         return board
     return json.loads(raw)
@@ -101,16 +101,12 @@ async def clear_user_hotseat(username: str):
 
 async def get_history(board_id: str):
     key = f"{REDIS_KEY_PREFIX}:{board_id}:{HISTORY_KEY_PREFIX}"
-    raw = await redis_client.get(key)
-    if not raw:
-        return []
-    return json.loads(raw)
+    raw = await redis_client.lrange(key, 0, -1)
+    return raw if raw is not None else []
 
 async def append_history(board_id: str, move: str):
-    history = await get_history(board_id)
-    history.append(move)
     key = f"{REDIS_KEY_PREFIX}:{board_id}:{HISTORY_KEY_PREFIX}"
-    await redis_client.set(key, json.dumps(history))
+    await redis_client.rpush(key, move)
 
 async def _read_timers(board_id: str, create: bool = True):
     """Read timers for a board.
@@ -195,11 +191,11 @@ async def get_board_state_at(board_id: str, index: int) -> Board:
         start = (8 - int(start_str[1]), ord(start_str[0]) - 65)
         end = (8 - int(end_str[1]), ord(end_str[0]) - 65)
         parsed_moves.append((start, end))
-    board = await create_initial_board()
+    board = create_initial_board()
     player = "white"
     for i, (start, end) in enumerate(parsed_moves):
         logger.debug("Replaying step %d by %s: %s -> %s", i + 1, player, start, end)
-        board = await validate_move(board, start, end, player)
+        board = validate_move(board, start, end, player)
         dr = abs(end[0] - start[0])
         dc = abs(end[1] - start[1])
         is_capture = dr > 1 or dc > 1
@@ -322,7 +318,7 @@ async def get_user_chats(user_id: int) -> List[str]:
     uid = str(int(user_id))
     cids = []
     for key in keys:
-        cid = key[len(CHAT_PREFIX) + 1 :]
+        cid = key[len(CHAT_PREFIX) + 1:]
         if uid in cid.split(":"):
             cids.append(cid)
     return cids

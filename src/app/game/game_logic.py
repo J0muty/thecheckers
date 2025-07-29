@@ -1,13 +1,44 @@
 from __future__ import annotations
+import logging
+import time
+import os
+import asyncio
+import functools
 from copy import deepcopy
 from typing import List, Optional, Tuple
-import logging
+
+os.makedirs("src/logs", exist_ok=True)
+logger = logging.getLogger("game_logic")
+logger.setLevel(logging.INFO)
+fh = logging.FileHandler("src/logs/game_logic.log", encoding="utf-8")
+fmt = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+fh.setFormatter(fmt)
+logger.addHandler(fh)
+
+def log_time(func):
+    if asyncio.iscoroutinefunction(func):
+        @functools.wraps(func)
+        async def wrapper(*args, **kwargs):
+            start = time.time()
+            result = await func(*args, **kwargs)
+            duration = (time.time() - start) * 1000
+            logger.info(f"Функция {func.__name__} выполнилась за {duration:.2f} мс")
+            return result
+        return wrapper
+    else:
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            start = time.time()
+            result = func(*args, **kwargs)
+            duration = (time.time() - start) * 1000
+            logger.info(f"Функция {func.__name__} выполнилась за {duration:.2f} мс")
+            return result
+        return wrapper
 
 Board = List[List[Optional[str]]]
 
-logger = logging.getLogger(__name__)
-
-async def create_initial_board() -> Board:
+@log_time
+def create_initial_board() -> Board:
     board: Board = [[None for _ in range(8)] for _ in range(8)]
     for row in range(3):
         for col in range(8):
@@ -41,6 +72,7 @@ def is_opponent(piece: str, player: str) -> bool:
 def sign(n: int) -> int:
     return (n > 0) - (n < 0)
 
+@log_time
 def man_moves(board: Board, pos: Tuple[int, int], player: str) -> List[Tuple[int, int]]:
     r, c = pos
     caps: List[Tuple[int, int]] = []
@@ -63,19 +95,18 @@ def man_moves(board: Board, pos: Tuple[int, int], player: str) -> List[Tuple[int
                 moves.append((dest_r, dest_c))
     return moves
 
+@log_time
 def king_moves(board: Board, pos: Tuple[int, int], player: str) -> List[Tuple[int, int]]:
     r, c = pos
     caps: List[Tuple[int, int]] = []
     for dr_sign, dc_sign in [(-1, -1), (-1, 1), (1, -1), (1, 1)]:
         i, j = r + dr_sign, c + dc_sign
-        # skip empty squares to find first non-empty or out of bounds
         while 0 <= i < 8 and 0 <= j < 8 and board[i][j] is None:
             i += dr_sign
             j += dc_sign
         if 0 <= i < 8 and 0 <= j < 8:
             piece_at = board[i][j]
             if piece_at and is_opponent(piece_at, player):
-                # found an opponent piece, now check possible landing spots beyond it
                 i2, j2 = i + dr_sign, j + dc_sign
                 while 0 <= i2 < 8 and 0 <= j2 < 8:
                     if board[i2][j2] is None:
@@ -87,7 +118,6 @@ def king_moves(board: Board, pos: Tuple[int, int], player: str) -> List[Tuple[in
     if caps:
         return caps
     moves: List[Tuple[int, int]] = []
-    # Normal moves (no capture)
     for dr_sign, dc_sign in [(-1, -1), (-1, 1), (1, -1), (1, 1)]:
         i, j = r + dr_sign, c + dc_sign
         while 0 <= i < 8 and 0 <= j < 8 and board[i][j] is None:
@@ -131,6 +161,7 @@ def piece_capture_moves(board: Board, pos: Tuple[int, int], player: str) -> List
                         j2 += dc_sign
     return caps
 
+@log_time
 def any_capture(board: Board, player: str) -> bool:
     for rr in range(8):
         for cc in range(8):
@@ -138,24 +169,21 @@ def any_capture(board: Board, player: str) -> bool:
                 return True
     return False
 
-async def validate_move(board: Board, start: Tuple[int, int], end: Tuple[int, int], player: str) -> Board:
+@log_time
+def validate_move(board: Board, start: Tuple[int, int], end: Tuple[int, int], player: str) -> Board:
     sr, sc = start
     er, ec = end
     if not (0 <= sr < 8 and 0 <= sc < 8 and 0 <= er < 8 and 0 <= ec < 8):
-        logger.error("Move out of bounds: %s -> %s by %s", start, end, player)
         raise ValueError('Позиция вне доски')
     piece = board[sr][sc]
     if not piece or ((player == 'white' and piece.lower() != 'w') or (player == 'black' and piece.lower() != 'b')) or board[er][ec] is not None:
-        logger.error("Invalid move: %s -> %s by %s", start, end, player)
         raise ValueError('Неверный ход')
     forced = any_capture(board, player)
     captures = piece_capture_moves(board, start, player)
     if forced and not captures:
-        logger.error("Forced capture missed: %s -> %s by %s", start, end, player)
         raise ValueError('Обязательное взятие')
     possible = captures if captures else (man_moves(board, start, player) if piece.islower() else king_moves(board, start, player))
     if end not in possible:
-        logger.error("Move not allowed: %s -> %s by %s", start, end, player)
         raise ValueError('Неверный ход')
     new_board = [row[:] for row in board]
     new_board[sr][sc] = None
@@ -177,6 +205,7 @@ async def validate_move(board: Board, start: Tuple[int, int], end: Tuple[int, in
         new_board[er][ec] = 'B'
     return new_board
 
+@log_time
 def game_status(board: Board) -> Optional[str]:
     white_has_pieces = False
     black_has_pieces = False
