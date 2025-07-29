@@ -30,6 +30,16 @@ html, body {
     color: var(--text-color);
     transition: background 0.3s ease, color 0.3s ease;
 }
+body.no-select {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    user-select: none;
+}
+
+body.no-select input,
+body.no-select textarea {
+    user-select: text;
+}
 .topbar {
     position: fixed;
     top: 0;

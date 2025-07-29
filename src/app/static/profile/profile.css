@@ -167,6 +167,11 @@
     box-shadow: 0 4px 12px rgba(0,0,0,0.05);
 }
 
+.history-wrapper,
+.history-wrapper * {
+    user-select: text;
+}
+
 .history-wrapper {
     max-height: 24rem;
     min-height: 14rem;
@@ -260,6 +265,7 @@
     background: var(--button-color);
     color: #fff;
     cursor: pointer;
+    user-select: none;
 }
 
 .history-controls button:hover {
