@@ -6,6 +6,9 @@ function setColumns(columns) {
   document.querySelectorAll('.layout-selector i').forEach(icon => {
     icon.classList.toggle('active', Number(icon.dataset.columns) === columns);
   });
+  if (window.innerWidth >= 900) {
+    localStorage.setItem('columns', columns.toString());
+  }
 }
 
 function createCard(data, unlocked) {
@@ -48,7 +51,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     icon.addEventListener('click', () => setColumns(Number(icon.dataset.columns)));
   });
 
-  setColumns(3);
+  const initColumns = window.innerWidth < 900 ? 1 : Number(localStorage.getItem('columns')) || 3;
+  setColumns(initColumns);
 
   const data = await loadAchievements();
   const unlocked = new Set(data.unlocked);
@@ -57,6 +61,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     list.appendChild(card);
   });
 
+  function handleResponsive() {
+    if (window.innerWidth < 900) {
+      selector.style.display = 'none';
+      if (Number(localStorage.getItem('columns')) !== 1) {
+        setColumns(1);
+      }
+    } else {
+      selector.style.display = '';
+      const saved = Number(localStorage.getItem('columns')) || 3;
+      setColumns(saved);
+    }
+  }
+
   fixScrollHeight();
-  window.addEventListener('resize', fixScrollHeight);
+  handleResponsive();
+  window.addEventListener('resize', () => {
+    fixScrollHeight();
+    handleResponsive();
+  });
 });
