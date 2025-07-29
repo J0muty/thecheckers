@@ -221,10 +221,12 @@ async function updateStatus() {
         };
         clearInterval(waitInterval);
         waitInterval = setInterval(() => {
-            const sec = Math.floor((Date.now() - data.waiting_since * 1000) / 1000);
+            const diff = Math.max(Date.now() - data.waiting_since * 1000, 0);
+            const sec = Math.floor(diff / 1000);
             waitTimer.textContent = formatTime(sec);
         }, 1000);
-        const sec = Math.floor((Date.now() - data.waiting_since * 1000) / 1000);
+        const diff = Math.max(Date.now() - data.waiting_since * 1000, 0);
+        const sec = Math.floor(diff / 1000);
         waitTimer.textContent = formatTime(sec);
     } else {
         waitBox.style.display = 'none';

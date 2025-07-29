@@ -212,6 +212,13 @@
     font-size: clamp(0.85rem, 0.9vw, 1rem);
 }
 
+.history-table td.date {
+    scrollbar-width: none;
+}
+.history-table td.date::-webkit-scrollbar {
+    display: none;
+}
+
 .history-table th::-webkit-scrollbar,
 .history-table td::-webkit-scrollbar {
     height: 4px;
