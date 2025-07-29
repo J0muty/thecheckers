@@ -20,7 +20,11 @@
 }
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{
+    width:100%;
     height:100%;
+    min-width:320px;
+    min-height:400px;
+    overflow:auto;
     background:var(--background-color);
     color:var(--text-color);
     font-family:var(--font-family);
@@ -30,17 +34,18 @@ html,body{
 .lobby-wrapper{
     display:flex;
     justify-content:center;
-    align-items:flex-start;
+    align-items:center;
     gap:40px;
     flex-wrap:wrap;
     min-height:100vh;
-    padding:24px;
+    padding:24px
 }
 .lobby-card{
     display:grid;
     gap:28px;
     width:100%;
     max-width:480px;
+    min-width:320px;
     padding:40px 32px;
     background:var(--surface-color);
     border-radius:var(--border-radius);
@@ -60,8 +65,7 @@ html,body{
     border-radius:9999px;
     color:#fff;
     font-size:.9rem;
-    font-weight:500;
-    cursor:default
+    font-weight:500
 }
 .players-list li .crown{
     position:absolute;
@@ -69,8 +73,7 @@ html,body{
     left:50%;
     transform:translateX(-50%);
     font-size:1rem;
-    color:#FACC15;
-    pointer-events:none
+    color:#FACC15
 }
 .radio-group{
     display:flex;
@@ -134,9 +137,9 @@ button:active{transform:translateY(0)}
     font-size:.8rem;
     font-weight:500
 }
-.invite-btn.sent{background:#9CA3AF;color:#fff;cursor:default}
+.invite-btn.sent{background:#9CA3AF;color:#fff}
 .invite-btn.declined{background:#F87171;color:#fff}
-.invite-btn.in-room{background:#D1D5DB;color:#111827;cursor:default}
+.invite-btn.in-room{background:#D1D5DB;color:#111827}
 .player-menu{
     position:absolute;
     top:100%;
@@ -158,10 +161,9 @@ button:active{transform:translateY(0)}
     background:var(--button-color);
     color:#fff;
     font-size:.8rem;
-    font-weight:500;
-    cursor:pointer
+    font-weight:500
 }
-.player-menu button:hover{opacity:.9}
+
 .lobby-chat{
     position:fixed;
     right:20px;
@@ -173,14 +175,53 @@ button:active{transform:translateY(0)}
     box-shadow:0 12px 40px rgba(0,0,0,.05);
     display:flex;
     flex-direction:column;
+    padding-top:26px
 }
-input:focus,
-input:focus-visible{
-    outline:none;
+.toggle-chat{
+    position:absolute;
+    top:6px;
+    right:8px;
+    padding:0 2px;
+    font-size:.9rem;
+    background:none;
+    border:none;
+    color:var(--accent-color);
+    cursor:pointer;
+    line-height:1
 }
-input:-webkit-autofill,
-input:autofill{
-    box-shadow:0 0 0 1000px var(--surface-color) inset !important;
-    -webkit-text-fill-color:var(--text-color) !important;
-    color:var(--text-color) !important;
+.lobby-chat.collapsed{
+    max-height:80px
+}
+.lobby-chat.collapsed .chat-messages{display:none}
+.chat-messages{
+    flex:1 1 auto;
+    overflow-y:auto;
+    margin-top:5px
+}
+.lobby-chat .chat-form{
+    display:flex;
+    gap:8px;
+    padding:12px
+}
+.lobby-chat .chat-input{
+    flex:1 1 auto;
+    min-width:0
+}
+
+input:focus-visible{outline:none}
+input:-webkit-autofill{
+    box-shadow:0 0 0 1000px var(--surface-color) inset!important;
+    -webkit-text-fill-color:var(--text-color)!important
+}
+
+@media(max-width:600px){
+    .lobby-wrapper{gap:20px;padding:16px}
+    .lobby-chat{
+        left:0;
+        right:0;
+        bottom:0;
+        width:100%;
+        max-height:50vh;
+        border-radius:var(--border-radius) var(--border-radius) 0 0
+    }
 }
