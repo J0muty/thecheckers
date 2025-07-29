@@ -2,6 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Лобби</title>
     <script>if(localStorage.theme==='dark'){document.documentElement.classList.add('dark-mode')}</script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -32,6 +33,7 @@
             </section>
         </main>
         <aside id="lobbyChat" class="chat-window open lobby-chat">
+            <button class="toggle-chat" type="button">▼</button>
             <div class="chat-messages"></div>
             <form class="chat-form">
                 <input class="chat-input" autocomplete="off">
@@ -43,7 +45,7 @@
         const lobbyId="{{ lobby_id }}";
         const userId="{{ user_id }}";
         const hostId="{{ host_id }}";
-        window.globalSessionToken = "{{ request.session.session_token or '' }}";
+        window.globalSessionToken="{{ request.session.session_token or '' }}";
     </script>
     <script src="/static/lobby/lobby.js"></script>
     <script src="/static/lobby/lobby_chat.js"></script>
