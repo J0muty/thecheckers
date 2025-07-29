@@ -143,6 +143,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    if (window.globalUserId) setupNotifWs();
+    if (window.globalUserId) {
+        setupNotifWs();
+        loadInvites();
+    }
     if (window.globalSessionToken) setupSessionWs();
 });

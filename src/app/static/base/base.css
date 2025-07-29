@@ -32,7 +32,17 @@ body {
     min-height: 100%;
 }
 
-/* ----- HEADER: весь header скроллится по горизонтали ----- */
+body.no-select {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    user-select: none;
+}
+
+body.no-select input,
+body.no-select textarea {
+    user-select: text;
+}
+
 .header {
     position: fixed;
     top: 0;
@@ -71,8 +81,6 @@ body {
     white-space: nowrap;
 }
 
-/* nav остаётся справа за счёт margin-left:auto,
-   но всё вместе можно прокрутить влево/вправо */
 .nav {
     margin-left: auto;
     flex: 0 0 auto;
@@ -177,6 +185,7 @@ main {
     padding: 20px;
     background: var(--surface-color);
     color: var(--secondary-text-color);
+    user-select: text;
 }
 
 input:focus,
