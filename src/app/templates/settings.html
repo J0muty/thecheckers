@@ -3,6 +3,7 @@
 {% block extra_css %}
 <link rel="stylesheet" href="/static/profile/profile.css">
 <link rel="stylesheet" href="/static/settings/settings.css">
+<link rel="stylesheet" href="/static/base/toast.css">
 {% endblock %}
 {% block content %}
 <div class="settings-wrapper">
@@ -53,6 +54,7 @@
             <button class="primary-btn" id="logout-all-btn">Выйти со всех сессий</button>
             <ul class="device-list"></ul>
         </div>
+        <button class="primary-btn danger-btn delete-account-btn" id="delete-account-btn">Удалить аккаунт</button>
     </div>
 </div>
 
@@ -68,6 +70,41 @@
                 <label for="twofa-code">6-значный код</label>
             </div>
             <button class="primary-btn" id="twofa-submit">Подтвердить</button>
+        </form>
+    </div>
+</div>
+<div id="delete-modal" class="modal hidden">
+    <div class="modal-content">
+        <span class="modal-close" id="delete-close">&times;</span>
+        <form id="delete-form">
+            <div id="delete-step-login">
+                <h3>Подтверждение аккаунта</h3>
+                <div class="input-group">
+                    <input type="text" id="del-login" placeholder=" " required>
+                    <label for="del-login">Логин или email</label>
+                </div>
+                <div class="input-group">
+                    <input type="password" id="del-password" placeholder=" " required>
+                    <label for="del-password">Пароль</label>
+                </div>
+                <button class="primary-btn" id="del-next">Продолжить</button>
+            </div>
+            {% if twofa_enabled %}
+            <div id="delete-step-code" class="hidden">
+                <div class="input-group">
+                    <input type="text" id="del-code" placeholder=" " maxlength="6" pattern="[0-9]{6}" required>
+                    <label for="del-code">6-значный код</label>
+                </div>
+                <button class="primary-btn" id="del-next-code">Продолжить</button>
+            </div>
+            {% endif %}
+            <div id="delete-step-confirm" class="hidden">
+                <p>Вы уверены, что хотите удалить аккаунт? Это действие необратимо.</p>
+                <div class="confirm-row">
+                    <button type="submit" class="primary-btn danger-btn" id="del-confirm">Да</button>
+                    <button type="button" class="primary-btn green-btn" id="del-cancel">Нет</button>
+                </div>
+            </div>
         </form>
     </div>
 </div>

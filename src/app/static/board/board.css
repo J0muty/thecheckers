@@ -13,6 +13,7 @@
     --sidebar-width: 280px;
     --gap-size: 12px;
     --font-base: 1rem;
+    --my-move-color: #a855f7;
 }
 
 .dark-mode {
@@ -22,6 +23,7 @@
     --text-color: #F9FAFB;
     --secondary-text-color: #9CA3AF;
     --accent-color: #3B82F6;
+    --my-move-color: #a855f7;
 }
 
 * {
@@ -102,6 +104,17 @@ body {
     background: rgba(59,130,246,0.25);
 }
 
+.player-name {
+    width: 8ch;
+    white-space: nowrap;
+    overflow-x: auto;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+.player-name::-webkit-scrollbar {
+    display: none;
+}
+
 .player-name,
 .timer {
     font-size: calc(var(--font-base) * 1.05);
@@ -129,8 +142,8 @@ body {
     border: 1px solid #E1E3E8;
     border-radius: var(--border-radius);
     background: var(--surface-color);
-    -ms-overflow-style: auto;
-    scrollbar-width: auto;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
 }
 
 .dark-mode .history-wrapper {
@@ -139,11 +152,12 @@ body {
 }
 
 .history-wrapper::-webkit-scrollbar {
-    width: 8px;
+    width: 0;
+    height: 0;
 }
 
 .history-wrapper::-webkit-scrollbar-thumb {
-    background: rgba(0,0,0,0.25);
+    background: transparent;
     border-radius: 4px;
 }
 
@@ -171,6 +185,10 @@ body {
 
 .dark-mode .history-list li:hover {
     background: rgba(59,130,246,0.12);
+}
+
+.history-list li.my-move {
+    color: var(--my-move-color);
 }
 
 .history-list li.active-history {
@@ -421,6 +439,7 @@ body {
 }
 
 .btn-red,
+.btn-blue,
 .btn-green {
     padding: 8px 16px;
     border: none;
@@ -435,6 +454,10 @@ body {
 
 .btn-green {
     background: #10b981;
+}
+
+.btn-blue {
+    background: #3b82f6;
 }
 
 @media (max-width: 1200px) {
@@ -464,6 +487,32 @@ body {
     }
     .board-grid {
         max-width: 100%;
+    }
+    .history-wrapper {
+        max-height: none;
+        overflow-y: hidden;
+        overflow-x: auto;
+    }
+    .history-list {
+        display: flex;
+        flex-direction: row;
+        width: max-content;
+    }
+    .history-list li {
+        border-bottom: none;
+        border-right: 1px solid #E1E3E8;
+    }
+    .dark-mode .history-list li {
+        border-right-color: #374151;
+    }
+    .history-list li:last-child {
+        border-right: none;
+    }
+    #returnButton {
+        align-self: flex-end;
+        margin-top: calc(var(--gap-size) * 0.5);
+        padding: calc(var(--gap-size) * 0.5) calc(var(--gap-size) * 1);
+        font-size: calc(var(--font-base) * 0.9);
     }
 }
 

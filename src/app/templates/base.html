@@ -11,17 +11,23 @@
     <title>{% block title %}TheCheckers{% endblock %}</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="/static/base/base.css">
+    <link rel="stylesheet" href="/static/base/toast.css">
     {% block extra_css %}{% endblock %}
     <script>
-        window.globalUserId = "{{ request.session.user_id or '' }}";
-        window.globalSessionToken = "{{ request.session.session_token or '' }}";
+        window.globalUserId = "{{ request.session.get('user_id','')|string }}";
+        window.globalSessionToken = "{{ request.session.get('session_token','')|string }}";
+    </script>
+    <script>
+        (function(){function setVh(){document.documentElement.style.setProperty('--vh',(window.innerHeight*0.01)+'px');}setVh();window.addEventListener('resize',setVh);})();
     </script>
 </head>
 <body class="{% block body_class %}{% endblock %}">
     <header class="header">
         <div class="logo">TheCheckers</div>
+        {% set uid = request.session.get('user_id') %}
+        {% set guest = (uid is string) and uid.startswith('ghost_') %}
         <nav class="nav">
-            {% if request.session.user_id %}
+            {% if uid and not guest %}
                 <div id="notifBell" class="notification-bell">
                     <i class="fa-solid fa-bell"></i>
                     <span id="notifCount" class="notification-count" style="display:none"></span>

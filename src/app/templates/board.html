@@ -11,6 +11,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="/static/board/board.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/base/toast.css">
     <script>
         const boardId = "{{ board_id }}";
         const playerColor = "{{ player_color }}";
@@ -38,7 +39,7 @@
                 <div class="history-wrapper">
                     <ul class="history-list" id="historyList"></ul>
                 </div>
-                <button id="returnButton" style="display:none; margin-top: 10px;">Вернуться</button>
+                <button id="returnButton" style="display:none;">Вернуться</button>
             </div>
         </div>
         <div class="board-wrapper">
@@ -77,10 +78,21 @@
             <p id="resultText"></p>
             <div class="modal-buttons">
                 <button id="resultHomeBtn" class="btn-green">Главная</button>
+                <button id="rematchBtn" class="btn-blue">Реванш</button>
                 <button id="resultCloseBtn" class="btn-red">Закрыть</button>
             </div>
         </div>
     </div>
+    <div id="rematchOfferModal" class="modal-overlay">
+        <div class="modal">
+            <p>Игрок предлагает реванш</p>
+            <div class="modal-buttons">
+                <button id="acceptRematchBtn" class="btn-green">Принять</button>
+                <button id="declineRematchBtn" class="btn-red">Отклонить</button>
+            </div>
+        </div>
+    </div>
     <script src="/static/base/session_ws.js"></script>
+    <script src="/static/base/toast.js"></script>
 </body>
 </html>

@@ -1,8 +1,8 @@
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.pool import NullPool
-from sqlalchemy import text, select
+from sqlalchemy import text, select, func
 from sqlalchemy.engine import URL
 from src.base.postgres_models import (
     Base,
@@ -11,8 +11,11 @@ from src.base.postgres_models import (
     Friend,
     FriendRequest,
     RecordedGame,
-    GameHistory
+    GameHistory,
+    Achievement,
+    UserAchievement,
 )
+from src.app.achievements.data import ALL_ACHIEVEMENTS
 from src.app.game.count_and_rang import update_elo, calculate_rank
 from src.app.utils.security import hash_password, verify_password
 from src.settings.config import MOSCOW_TZ, db_user, db_password, db_host, db_port, db_name
@@ -41,24 +44,42 @@ async def init_db():
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS citext;"))
         await conn.run_sync(Base.metadata.create_all)
 
+    await ensure_achievements(ALL_ACHIEVEMENTS)
+
+
 def connect(method):
     async def wrapper(*args, **kwargs):
         async with async_session() as session:
             try:
                 result = await method(*args, **kwargs, session=session)
                 return result
+            except ValueError as e:
+                await session.rollback()
+                raise e
             except Exception as e:
                 await session.rollback()
-                raise Exception(f'Ошибка при работе с базой данных: {repr(e)} \nargs:\n{args}')
+                raise Exception(
+                    f'Ошибка при работе с базой данных: {repr(e)} \nargs:\n{args}'
+                )
     return wrapper
 
 @connect
 async def create_user(login: str, email: str, password: str, session: AsyncSession) -> User:
     login_norm = login.strip().lower()
     email_norm = email.strip().lower()
-    exists = await session.execute(select(User).where((User.login == login_norm) | (User.email == email_norm)))
-    if exists.scalar_one_or_none():
-        raise ValueError("Пользователь с таким логином или почтой уже существует")
+
+    login_q = await session.execute(select(User).where(User.login == login_norm))
+    login_exists = login_q.scalar_one_or_none() is not None
+    email_q = await session.execute(select(User).where(User.email == email_norm))
+    email_exists = email_q.scalar_one_or_none() is not None
+
+    if login_exists or email_exists:
+        if login_exists and email_exists:
+            raise ValueError("EXISTS_BOTH")
+        if login_exists:
+            raise ValueError("EXISTS_LOGIN")
+        raise ValueError("EXISTS_EMAIL")
+
     pwd_hash = hash_password(password)
     user = User(login=login_norm, email=email_norm, password=pwd_hash)
     session.add(user)
@@ -99,9 +120,28 @@ async def authenticate_user(login_or_email: str, password: str, session: AsyncSe
     return None
 
 @connect
+async def check_user_exists(session: AsyncSession, login: str | None = None, email: str | None = None) -> tuple[bool, bool]:
+    login_exists = False
+    email_exists = False
+    if login is not None:
+        login_norm = login.strip().lower()
+        q = await session.execute(select(User).where(User.login == login_norm))
+        login_exists = q.scalar_one_or_none() is not None
+    if email is not None:
+        email_norm = email.strip().lower()
+        q = await session.execute(select(User).where(User.email == email_norm))
+        email_exists = q.scalar_one_or_none() is not None
+    return login_exists, email_exists
+
+@connect
 async def get_user_login(user_id: int, session: AsyncSession) -> str | None:
     user = await session.get(User, user_id)
     return user.login if user else None
+
+@connect
+async def get_user_email(user_id: int, session: AsyncSession) -> str | None:
+    user = await session.get(User, user_id)
+    return user.email if user else None
 
 @connect
 async def get_user_stats(user_id: int, session: AsyncSession) -> dict:
@@ -158,6 +198,10 @@ async def send_friend_request(from_id: int, to_id: int, session: AsyncSession) -
         session.add(Friend(user_id=from_id, friend_id=to_id))
         session.add(Friend(user_id=to_id, friend_id=from_id))
         await session.commit()
+        from src.app.achievements.friends import check_friend_achievements
+        await check_friend_achievements(from_id)
+        await check_friend_achievements(to_id)
+
         return
     fr = FriendRequest(from_user_id=from_id, to_user_id=to_id)
     session.add(fr)
@@ -263,6 +307,30 @@ async def get_user_history(user_id: int, session: AsyncSession, offset: int = 0,
     ]
 
 @connect
+async def count_bot_results(user_id: int, difficulty: str, result: str, session: AsyncSession) -> int:
+    mode = f"single_{difficulty}"
+    stmt = select(func.count()).select_from(GameHistory).where(
+        GameHistory.user_id == user_id,
+        GameHistory.mode == mode,
+        GameHistory.result == result,
+    )
+    q = await session.execute(stmt)
+    return q.scalar_one()
+
+@connect
+async def sum_elo_change_since(user_id: int, since: datetime, session: AsyncSession) -> int:
+    stmt = (
+        select(func.coalesce(func.sum(GameHistory.elo_change), 0))
+        .where(
+            GameHistory.user_id == user_id,
+            GameHistory.timestamp >= since,
+            GameHistory.elo_change != None,
+        )
+    )
+    q = await session.execute(stmt)
+    return q.scalar_one() or 0
+
+@connect
 async def set_2fa_secret(user_id: int, secret: str, session: AsyncSession) -> None:
     user = await session.get(User, user_id)
     user.twofa_secret = secret
@@ -285,3 +353,100 @@ async def disable_2fa(user_id: int, session: AsyncSession) -> None:
 async def get_2fa_info(user_id: int, session: AsyncSession) -> dict:
     user = await session.get(User, user_id)
     return {"enabled": bool(user.twofa_enabled), "secret": user.twofa_secret}
+
+@connect
+async def delete_user_account(user_id: int, session: AsyncSession) -> None:
+    await session.execute(
+        text("DELETE FROM friends WHERE user_id = :uid OR friend_id = :uid"),
+        {"uid": user_id},
+    )
+    await session.execute(
+        text(
+            "DELETE FROM friend_requests WHERE from_user_id = :uid OR to_user_id = :uid"
+        ),
+        {"uid": user_id},
+    )
+    await session.execute(
+        text("DELETE FROM game_history WHERE user_id = :uid"), {"uid": user_id}
+    )
+    await session.execute(
+        text(
+            "DELETE FROM recorded_games WHERE white_id = :uid OR black_id = :uid"
+        ),
+        {"uid": user_id},
+    )
+    await session.execute(
+        text("DELETE FROM user_stats WHERE user_id = :uid"), {"uid": user_id}
+    )
+    user = await session.get(User, user_id)
+    if user:
+        await session.delete(user)
+    await session.commit()
+
+@connect
+async def ensure_achievements(achievements: list[dict], session: AsyncSession) -> None:
+    for ach in achievements:
+        q = await session.execute(
+            select(Achievement).where(Achievement.code == ach["code"])
+        )
+        if q.scalar_one_or_none() is None:
+            obj = Achievement(
+                code=ach["code"],
+                title=ach["title"],
+                description=ach["desc"],
+                icon=ach["icon"],
+            )
+            session.add(obj)
+    await session.commit()
+
+
+@connect
+async def unlock_achievement(user_id: int, code: str, session: AsyncSession) -> None:
+    q = await session.execute(select(Achievement).where(Achievement.code == code))
+    achievement = q.scalar_one_or_none()
+    if not achievement:
+        return
+    exists = await session.execute(
+        select(UserAchievement).where(
+            UserAchievement.user_id == user_id,
+            UserAchievement.achievement_id == achievement.id,
+        )
+    )
+    if exists.scalar_one_or_none():
+        return
+    ua = UserAchievement(
+        user_id=user_id,
+        achievement_id=achievement.id,
+        timestamp=datetime.now(tz=MOSCOW_TZ),
+    )
+    session.add(ua)
+    await session.commit()
+
+
+@connect
+async def get_user_achievements(user_id: int, session: AsyncSession) -> list[str]:
+    result = await session.execute(
+        select(UserAchievement.achievement_id).where(UserAchievement.user_id == user_id)
+    )
+    ids = [row[0] for row in result.all()]
+    if not ids:
+        return []
+    codes = await session.execute(
+        select(Achievement.code).where(Achievement.id.in_(ids))
+    )
+    return [row[0] for row in codes.all()]
+
+
+@connect
+async def get_achievements(session: AsyncSession) -> list[dict]:
+    result = await session.execute(select(Achievement))
+    achievements = result.scalars().all()
+    return [
+        {
+            "code": a.code,
+            "title": a.title,
+            "desc": a.description,
+            "icon": a.icon,
+        }
+        for a in achievements
+    ]

@@ -1,3 +1,5 @@
+(function(){function setVh(){document.documentElement.style.setProperty('--vh',(window.innerHeight*0.01)+'px');}setVh();window.addEventListener('resize',setVh);})();
+
 document.addEventListener('DOMContentLoaded', () => {
     const pending = localStorage.getItem('pendingToast');
     if (pending) {
@@ -48,7 +50,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const item = document.createElement('div');
             item.className = 'notification-item';
             const text = document.createElement('span');
-            text.textContent = `${inv.from_login} приглашает в лобби`;
+            if (inv.type === 'rematch') {
+                text.textContent = `${inv.from_login} предлагает реванш`;
+            } else {
+                text.textContent = `${inv.from_login} приглашает в лобби`;
+            }
             const actions = document.createElement('div');
             actions.className = 'invite-actions';
             const accept = document.createElement('button');
@@ -56,16 +62,29 @@ document.addEventListener('DOMContentLoaded', () => {
             accept.innerHTML = '<i class="fa-solid fa-check"></i>';
             accept.addEventListener('click', async e => {
                 e.stopPropagation();
-                await fetch(`/api/lobby/respond/${inv.lobby_id}?action=accept`, { method: 'POST' });
-                window.location.href = `/lobby/${inv.lobby_id}`;
+                if (inv.type === 'rematch') {
+                    const res = await fetch(`/api/rematch_response/${inv.board_id}?action=accept`, { method: 'POST' });
+                    if (res.ok) {
+                        const d = await res.json();
+                        window.location.href = `/board/${d.board_id}`;
+                    }
+                } else {
+                    await fetch(`/api/lobby/respond/${inv.lobby_id}?action=accept`, { method: 'POST' });
+                    window.location.href = `/lobby/${inv.lobby_id}`;
+                }
             });
             const decline = document.createElement('button');
             decline.className = 'invite-btn decline';
             decline.innerHTML = '<i class="fa-solid fa-xmark"></i>';
             decline.addEventListener('click', async e => {
                 e.stopPropagation();
-                await fetch(`/api/lobby/respond/${inv.lobby_id}?action=decline`, { method: 'POST' });
-                loadInvites();
+                if (inv.type === 'rematch') {
+                    await fetch(`/api/rematch_response/${inv.board_id}?action=decline`, { method: 'POST' });
+                    loadInvites();
+                } else {
+                    await fetch(`/api/lobby/respond/${inv.lobby_id}?action=decline`, { method: 'POST' });
+                    loadInvites();
+                }
             });
             actions.append(accept, decline);
             item.append(text, actions);
@@ -80,7 +99,21 @@ document.addEventListener('DOMContentLoaded', () => {
     function setupNotifWs() {
         if (!window.globalUserId) return;
         const ws = new WebSocket(buildNotifWsUrl(window.globalUserId));
-        ws.addEventListener('message', loadInvites);
+        ws.addEventListener('message', e => {
+            try {
+                const data = JSON.parse(e.data);
+                if (data.type === 'rematch_start') {
+                    window.location.href = `/board/${data.board_id}`;
+                    return;
+                }
+                if (data.type === 'rematch_decline') {
+                    const msg = data.from_login ? `${data.from_login} отклонил реванш` : 'Реванш отклонён';
+                    showNotification(msg, 'error');
+                    return;
+                }
+            } catch {}
+            loadInvites();
+        });
         ws.addEventListener('close', () => setTimeout(setupNotifWs, 1000));
     }
 
@@ -110,6 +143,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    if (window.globalUserId) setupNotifWs();
+    if (window.globalUserId) {
+        setupNotifWs();
+        loadInvites();
+    }
     if (window.globalSessionToken) setupSessionWs();
 });

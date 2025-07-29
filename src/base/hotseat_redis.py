@@ -73,12 +73,14 @@ async def get_current_timers(game_id: str, create: bool = True):
     timers = await _read_timers(game_id, create=create)
     if timers is None:
         return None
-    now = time.time()
-    active = timers["turn"]
-    elapsed = now - timers["last_ts"]
-    timers_view = timers.copy()
-    timers_view[active] = max(0, timers_view[active] - elapsed)
-    return timers_view
+    turn = timers.get("turn")
+    if turn in ("white", "black"):
+        now = time.time()
+        elapsed = now - timers["last_ts"]
+        timers_view = timers.copy()
+        timers_view[turn] = max(0, timers_view[turn] - elapsed)
+        return timers_view
+    return timers
 
 
 async def apply_move_timer(game_id: str, player: str):
@@ -103,6 +105,20 @@ async def apply_same_turn_timer(game_id: str, player: str):
     await redis_client.set(key, json.dumps(timers))
     return timers
 
+async def freeze_timers(game_id: str):
+    timers = await _read_timers(game_id, create=False)
+    if timers is None:
+        return None
+    turn = timers.get("turn")
+    if turn in ("white", "black"):
+        now = time.time()
+        elapsed = now - timers["last_ts"]
+        timers[turn] = max(0, timers[turn] - elapsed)
+        timers["last_ts"] = now
+    timers["turn"] = "stopped"
+    key = f"{HOTSEAT_REDIS_KEY_PREFIX}:{game_id}:{TIMER_KEY_PREFIX}"
+    await redis_client.set(key, json.dumps(timers))
+    return timers
 
 async def get_board_state_at(game_id: str, index: int) -> Board:
     history = await get_history(game_id)
@@ -152,7 +168,7 @@ async def expire_board(game_id: str, delay: int = 300):
     for key in user_keys:
         val = await redis_client.get(key)
         if val == game_id:
-            await redis_client.delete(key)
+            await redis_client.expire(key, delay)
 
 async def get_game_user(game_id: str) -> str | None:
     keys = await redis_client.keys(f"{USER_HOTSEAT_KEY_PREFIX}:*")

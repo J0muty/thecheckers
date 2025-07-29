@@ -1,4 +1,4 @@
-{% extends 'board.html' %}
+{% extends 'single_base.html' %}
 
 {% block board_script %}
     <script src="/static/board/singleplayer.js" defer></script>
@@ -6,4 +6,5 @@
     <script>
         window.globalSessionToken = "{{ request.session.session_token or '' }}";
     </script>
+    <script src="/static/base/toast.js"></script>
 {% endblock %}

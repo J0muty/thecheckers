@@ -59,13 +59,10 @@ function setupLobbyWs(){
         try{
             const d=JSON.parse(e.data)
             if(d.type==='start'){window.location.href=`/board/${d.board_id}`;return}
-                        if(d.type==='state'){
+            if(d.type==='state'){
                 if(!d.state.player_ids.includes(String(userId))){
                     if(!leaving){
-                        localStorage.setItem('pendingToast', JSON.stringify({
-                            message:'Вас выгнали из лобби',
-                            type:'error'
-                        }));
+                        localStorage.setItem('pendingToast',JSON.stringify({message:'Вас выгнали из лобби',type:'error'}))
                     }
                     window.location.href='/'
                     return

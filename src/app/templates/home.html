@@ -2,8 +2,11 @@
 
 {% block title %}Главная страница{% endblock %}
 
+{% block body_class %}no-select{% endblock %}
+
 {% block extra_css %}
     <link rel="stylesheet" href="/static/home/home.css">
+    <link rel="stylesheet" href="/static/base/toast.css">
 {% endblock %}
 
 {% block content %}
@@ -79,7 +82,9 @@
             <h2 class="modal-title">Выберите режим</h2>
             <div class="modal-menu">
                 <button id="netSearchBtn" class="btn" type="button">Поиск</button>
+                {% if not is_guest %}
                 <button id="netLobbyBtn" class="btn" type="button">Лобби</button>
+                {% endif %}
                 <button id="netBoardBtn" class="btn" type="button">Одна доска</button>
             </div>
         </div>

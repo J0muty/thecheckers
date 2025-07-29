@@ -19,13 +19,16 @@ from src.base.single_redis import (
     get_current_timers,
     apply_move_timer,
     apply_same_turn_timer,
+    freeze_timers,
     get_board_state_at,
-    cleanup_board,
+    expire_board,
     assign_user_game,
     get_user_game,
     get_game_user,
 )
 from src.base.postgres import record_game, save_recorded_game
+from src.app.achievements.bots import check_bot_achievements
+from src.app.utils.guest import is_guest
 
 logger = logging.getLogger(__name__)
 
@@ -51,8 +54,9 @@ async def _log_game_result(game_id: str, status: str):
     else:
         return
     history = await get_history(game_id)
-    white_id = int(user) if color == "white" else None
-    black_id = int(user) if color == "black" else None
+    difficulty = game_difficulties.get(game_id, "easy")
+    white_id = int(user) if (color == "white" and str(user).isdigit()) else None
+    black_id = int(user) if (color == "black" and str(user).isdigit()) else None
     await save_recorded_game(
         game_id,
         white_id,
@@ -62,13 +66,18 @@ async def _log_game_result(game_id: str, status: str):
         mode="single",
         ranked=False,
     )
-    await record_game(int(user), "single", res, None, game_id=game_id)
+    if str(user).isdigit():
+        await record_game(int(user), f"single_{difficulty}", res, None, game_id=game_id)
+        await check_bot_achievements(int(user), difficulty, res)
+    game_difficulties.pop(game_id, None)
+    game_colors.pop(game_id, None)
 
 
 class MoveRequest(BaseModel):
     start: Point
     end: Point
     player: str
+    history_len: int
 
 
 class Timers(BaseModel):
@@ -220,8 +229,13 @@ async def api_make_move(game_id: str, req: MoveRequest):
         raise HTTPException(status_code=403, detail="Invalid player")
     if not await game_exists(game_id):
         raise HTTPException(status_code=404)
+    timers_check = await get_current_timers(game_id, create=False)
+    if timers_check and timers_check.get("turn") != req.player:
+        raise HTTPException(status_code=409, detail="Not your turn")
     board = await get_board_state(game_id, create=False)
     history_before = await get_history(game_id)
+    if len(history_before) != req.history_len:
+        raise HTTPException(status_code=409, detail="Out of sync")
     try:
         new_board = await validate_move(board, req.start, req.end, req.player)
     except ValueError as e:
@@ -250,7 +264,8 @@ async def api_make_move(game_id: str, req: MoveRequest):
                 await _log_game_result(game_id, status)
                 history = await get_history(game_id)
                 timers_view = await get_current_timers(game_id, create=False)
-                await cleanup_board(game_id)
+                await freeze_timers(game_id)
+                await expire_board(game_id, delay=600)
                 result = MoveResult(
                     board=new_board,
                     status=status,
@@ -275,7 +290,8 @@ async def api_make_move(game_id: str, req: MoveRequest):
         await _log_game_result(game_id, status)
         history = await get_history(game_id)
         timers_view = await get_current_timers(game_id, create=False)
-        await cleanup_board(game_id)
+        await freeze_timers(game_id)
+        await expire_board(game_id, delay=600)
         result = MoveResult(
             board=new_board,
             status=status,
@@ -289,7 +305,7 @@ async def api_make_move(game_id: str, req: MoveRequest):
         await _log_game_result(game_id, status)
         history = await get_history(game_id)
         timers_view = await get_current_timers(game_id, create=False)
-        await cleanup_board(game_id)
+        await expire_board(game_id, delay=600)
         result = MoveResult(
             board=new_board,
             status=status,
@@ -334,7 +350,8 @@ async def api_make_move(game_id: str, req: MoveRequest):
         await _log_game_result(game_id, status)
         history = await get_history(game_id)
         timers = await get_current_timers(game_id, create=False)
-        await cleanup_board(game_id)
+        await freeze_timers(game_id)
+        await expire_board(game_id, delay=600)
     else:
         history = await get_history(game_id)
         timers = await get_current_timers(game_id)
@@ -362,7 +379,8 @@ async def api_resign(game_id: str, req: PlayerAction):
     await _log_game_result(game_id, status)
     history = await get_history(game_id)
     timers = await get_current_timers(game_id, create=False)
-    await cleanup_board(game_id)
+    await freeze_timers(game_id)
+    await expire_board(game_id, delay=600)
     result = MoveResult(board=board, status=status, history=history, timers=timers)
     await single_board_manager.broadcast(game_id, result.json())
     return result
@@ -382,7 +400,8 @@ async def api_single_check_timeout(game_id: str):
     if not status:
         return MoveResult(board=board, status=None, history=history, timers=timers)
     await _log_game_result(game_id, status)
-    await cleanup_board(game_id)
+    await freeze_timers(game_id)
+    await expire_board(game_id, delay=600)
     result = MoveResult(board=board, status=status, history=history, timers=timers)
     await single_board_manager.broadcast(game_id, result.json())
     return result

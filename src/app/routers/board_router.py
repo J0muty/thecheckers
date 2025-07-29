@@ -2,10 +2,10 @@ import uuid
 import json
 import logging
 from fastapi import Request, APIRouter, HTTPException
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from pydantic import BaseModel
 from typing import List, Optional, Tuple
-from src.app.routers.ws_router import board_manager
+from src.app.routers.ws_router import board_manager, notify_manager
 
 from src.settings.settings import templates
 from src.base.redis import (
@@ -13,17 +13,22 @@ from src.base.redis import (
     get_board_state,
     save_board_state,
     assign_user_board,
+    set_board_players,
     get_history,
     append_history,
     get_current_timers,
     apply_move_timer,
     apply_same_turn_timer,
+    freeze_timers,
     get_board_state_at,
     get_board_players,
-    cleanup_board,
+    expire_board,
     set_draw_offer,
     get_draw_offer,
     clear_draw_offer,
+    add_rematch_invite,
+    remove_rematch_invite,
+    get_board_rematch_invites,
 )
 from src.base.lobby_redis import clear_lobby_board
 from src.app.game.game_logic import (
@@ -41,6 +46,8 @@ from src.base.postgres import (
     record_game,
     save_recorded_game,
 )
+from src.app.achievements.rating import check_rating_achievements
+from src.app.utils.guest import is_guest, get_display_name
 
 logger = logging.getLogger(__name__)
 
@@ -154,8 +161,7 @@ async def api_get_board(board_id: str):
     timers = await get_current_timers(board_id)
     players = {}
     for color, uid in players_raw.items():
-        login = await get_user_login(int(uid))
-        players[color] = login or str(uid)
+        players[color] = await get_display_name(uid)
     return BoardState(board=board, history=history, timers=timers, players=players)
 
 
@@ -200,6 +206,9 @@ async def api_make_move(request: Request, board_id: str, req: MoveRequest):
         raise HTTPException(status_code=401)
     if not await board_exists(board_id):
         raise HTTPException(status_code=404)
+    timers = await get_current_timers(board_id, create=False)
+    if timers and timers.get("turn") not in ("white", "black"):
+        raise HTTPException(status_code=400, detail="Game finished")
     players = await get_board_players(board_id)
     if players and players.get(req.player) != str(user_id):
         raise HTTPException(status_code=403, detail="Invalid player")
@@ -255,7 +264,7 @@ async def api_make_move(request: Request, board_id: str, req: MoveRequest):
     if status:
         players = await get_board_players(board_id)
         history = await get_history(board_id)
-        if players:
+        if players and players.get("white").isdigit() and players.get("black").isdigit():
             white_id = int(players.get("white"))
             black_id = int(players.get("black"))
             white_stats = await get_user_stats(white_id)
@@ -304,8 +313,10 @@ async def api_make_move(request: Request, board_id: str, req: MoveRequest):
                     rating_change.get(color),
                     game_id=board_id,
                 )
-        current_timers = await get_current_timers(board_id, create=False)
-        await cleanup_board(board_id)
+            await check_rating_achievements(white_id)
+            await check_rating_achievements(black_id)
+        current_timers = await freeze_timers(board_id)
+        await expire_board(board_id, delay=600)
         await clear_lobby_board(board_id)
 
     else:
@@ -342,9 +353,11 @@ async def api_resign(request: Request, board_id: str, action: PlayerAction):
     if players and players.get(action.player) != str(user_id):
         raise HTTPException(status_code=403, detail="Invalid player")
     board = await get_board_state(board_id, create=False)
+    history = await get_history(board_id)
+    rating_change = None
     status = "black_win" if action.player == "white" else "white_win"
     players = await get_board_players(board_id)
-    if players:
+    if players and players.get("white").isdigit() and players.get("black").isdigit():
         white_id = int(players.get("white"))
         black_id = int(players.get("black"))
         white_stats = await get_user_stats(white_id)
@@ -368,7 +381,6 @@ async def api_resign(request: Request, board_id: str, action: PlayerAction):
             "white_win": {"white": "win", "black": "loss"},
             "black_win": {"white": "loss", "black": "win"},
         }
-        history = await get_history(board_id)
         await save_recorded_game(
             board_id,
             white_id,
@@ -386,8 +398,10 @@ async def api_resign(request: Request, board_id: str, action: PlayerAction):
                 rating_change.get(color),
                 game_id=board_id,
             )
-    timers = await get_current_timers(board_id, create=False)
-    await cleanup_board(board_id)
+        await check_rating_achievements(white_id)
+        await check_rating_achievements(black_id)
+    timers = await freeze_timers(board_id)
+    await expire_board(board_id, delay=600)
     await clear_lobby_board(board_id)
     result = MoveResult(
         board=board,
@@ -432,9 +446,10 @@ async def api_draw_response(request: Request, board_id: str, resp: DrawResponse)
     await clear_draw_offer(board_id)
     if resp.accept and offer and resp.player != offer:
         board = await get_board_state(board_id, create=False)
+        history = await get_history(board_id)
         players = await get_board_players(board_id)
         rating_change = None
-        if players:
+        if players and players.get("white").isdigit() and players.get("black").isdigit():
             white_id = int(players.get("white"))
             black_id = int(players.get("black"))
             white_stats = await get_user_stats(white_id)
@@ -443,7 +458,6 @@ async def api_draw_response(request: Request, board_id: str, resp: DrawResponse)
                 "white": await record_game_result(white_id, "draw", black_stats["elo"]),
                 "black": await record_game_result(black_id, "draw", white_stats["elo"]),
             }
-            history = await get_history(board_id)
             await save_recorded_game(
                 board_id,
                 white_id,
@@ -455,8 +469,10 @@ async def api_draw_response(request: Request, board_id: str, resp: DrawResponse)
             )
             for color, uid in players.items():
                 await record_game(int(uid), "ranked", "draw", rating_change.get(color), game_id=board_id)
-        timers = await get_current_timers(board_id, create=False)
-        await cleanup_board(board_id)
+            await check_rating_achievements(white_id)
+            await check_rating_achievements(black_id)
+        timers = await freeze_timers(board_id)
+        await expire_board(board_id, delay=600)
         await clear_lobby_board(board_id)
         result = MoveResult(
             board=board,
@@ -491,7 +507,7 @@ async def api_check_timeout(board_id: str):
 
     players = await get_board_players(board_id)
     rating_change = None
-    if players:
+    if players and players.get("white").isdigit() and players.get("black").isdigit():
         white_id = int(players.get("white"))
         black_id = int(players.get("black"))
         white_stats = await get_user_stats(white_id)
@@ -532,8 +548,11 @@ async def api_check_timeout(board_id: str):
                 rating_change.get(color),
                 game_id=board_id,
             )
+        await check_rating_achievements(white_id)
+        await check_rating_achievements(black_id)
 
-    await cleanup_board(board_id)
+    timers = await freeze_timers(board_id)
+    await expire_board(board_id, delay=600)
     await clear_lobby_board(board_id)
     result = MoveResult(
         board=board,
@@ -545,3 +564,73 @@ async def api_check_timeout(board_id: str):
     )
     await board_manager.broadcast(board_id, result.json())
     return result
+
+@board_router.post("/api/rematch_request/{board_id}")
+async def api_rematch_request(request: Request, board_id: str):
+    user_id = request.session.get("user_id")
+    if user_id is None:
+        raise HTTPException(status_code=401)
+    players = await get_board_players(board_id)
+    if not players or str(user_id) not in players.values():
+        raise HTTPException(status_code=404)
+    opponent_id = None
+    my_color = None
+    for color, uid in players.items():
+        if uid == str(user_id):
+            my_color = color
+        else:
+            opponent_id = uid
+    if not opponent_id:
+        raise HTTPException(status_code=400)
+    await add_rematch_invite(board_id, opponent_id, str(user_id))
+    msg = json.dumps({"type": "rematch_offer", "from": my_color})
+    await board_manager.broadcast(board_id, msg)
+    await notify_manager.broadcast(
+        opponent_id,
+        json.dumps({"type": "invite"})
+    )
+    return JSONResponse({"status": "ok"})
+
+
+@board_router.post("/api/rematch_response/{board_id}")
+async def api_rematch_response(request: Request, board_id: str, action: str):
+    user_id = request.session.get("user_id")
+    if user_id is None:
+        raise HTTPException(status_code=401)
+    players = await get_board_players(board_id)
+    if not players:
+        raise HTTPException(status_code=404)
+    invites = await get_board_rematch_invites(board_id)
+    sender_id = invites.get(str(user_id))
+    if not sender_id:
+        raise HTTPException(status_code=404)
+    await remove_rematch_invite(board_id, str(user_id))
+    if action == "accept":
+        new_board_id = str(uuid.uuid4())
+        await set_board_players(new_board_id, players)
+        for uid in players.values():
+            await assign_user_board(uid, new_board_id)
+        await board_manager.broadcast(
+            board_id,
+            json.dumps({"type": "rematch_start", "board_id": new_board_id})
+        )
+        await notify_manager.broadcast(
+            sender_id,
+            json.dumps({"type": "rematch_start", "board_id": new_board_id})
+        )
+        await notify_manager.broadcast(
+            str(user_id),
+            json.dumps({"type": "rematch_start", "board_id": new_board_id})
+        )
+        return JSONResponse({"board_id": new_board_id})
+    else:
+        await board_manager.broadcast(board_id, json.dumps({"type": "rematch_decline"}))
+        if str(user_id).isdigit():
+            login = await get_user_login(int(user_id))
+        else:
+            login = str(user_id)
+        await notify_manager.broadcast(
+            sender_id,
+            json.dumps({"type": "rematch_decline", "from_login": login or str(user_id)})
+        )
+        return JSONResponse({"status": "declined"})

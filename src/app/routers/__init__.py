@@ -10,6 +10,7 @@ from src.app.routers.chat_router import chat_router
 from src.app.routers.single_router import single_router
 from src.app.routers.hotseat_router import hotseat_router
 from src.app.routers.replay_router import replay_router
+from src.app.routers.report_router import report_router
 
 
 
@@ -28,5 +29,6 @@ __all__ = [
     'hotseat_router',
     'lobby_router',
     'replay_router',
+    'report_router',
 ]
 

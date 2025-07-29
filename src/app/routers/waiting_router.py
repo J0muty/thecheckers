@@ -8,6 +8,7 @@ from src.base.redis import (
     get_board_players,
     get_user_hotseat,
     get_waiting_time,
+    waiting_timed_out,
 )
 from src.base.lobby_redis import get_user_lobby
 from src.base.single_redis import get_user_game
@@ -61,6 +62,10 @@ async def api_user_status(request: Request):
         raise HTTPException(status_code=401)
     board_id, color = await check_waiting(str(user_id))
     waiting_since = await get_waiting_time(str(user_id))
+    timed_out = False
+    if await waiting_timed_out(str(user_id)):
+        waiting_since = None
+        timed_out = True
     single_game = await get_user_game(str(user_id))
     single_color = game_colors.get(single_game, "white") if single_game else None
     hotseat_id = await get_user_hotseat(str(user_id))
@@ -69,6 +74,7 @@ async def api_user_status(request: Request):
         "board_id": board_id,
         "color": color,
         "waiting_since": waiting_since,
+        "timeout": timed_out,
         "single_game_id": single_game,
         "single_color": single_color,
         "hotseat_id": hotseat_id,
@@ -76,9 +82,14 @@ async def api_user_status(request: Request):
     })
 
 @waiting_router.post("/api/cancel_game")
-async def api_cancel_game(request: Request):
+async def api_cancel_game(request: Request, timeout: bool = False):
     user_id = request.session.get("user_id")
     if not user_id:
         raise HTTPException(status_code=401)
     await cancel_waiting(str(user_id))
+    if timeout:
+        request.session["flash"] = {
+            "message": "Игра не была найдена",
+            "type": "error",
+        }
     return JSONResponse({"status": "ok"})

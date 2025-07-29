@@ -1,0 +1,41 @@
+{% extends "profile_base.html" %}
+{% block title %}Сообщить об ошибке{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="/static/profile/profile.css">
+<link rel="stylesheet" href="/static/report/report.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<link rel="stylesheet" href="/static/base/toast.css">
+{% endblock %}
+{% block content %}
+<div class="report-wrapper">
+    <h1 class="section-title">Сообщить об ошибке</h1>
+    <form id="report-form" class="report-form" enctype="multipart/form-data" method="post" action="">
+        <div class="input-group">
+            <input type="text" id="report-username" name="username" value="{{ username }}" readonly>
+            <label for="report-username">Ваш логин</label>
+        </div>
+        <div class="input-group">
+            <input type="email" id="report-email" name="email" value="{{ email }}" readonly>
+            <label for="report-email">Ваш email</label>
+        </div>
+        <div class="input-group">
+            <input type="text" id="report-subject" name="subject" placeholder=" " minlength="10" required>
+            <label for="report-subject">Тема обращения</label>
+        </div>
+        <div class="input-group">
+            <textarea id="report-message" name="message" placeholder=" " minlength="50" required></textarea>
+            <label for="report-message">Описание проблемы</label>
+        </div>
+        <div class="input-group file-group">
+            <input type="file" id="report-file" name="files" accept="image/*" multiple hidden>
+            <label for="report-file" class="file-btn"><i class="fa-solid fa-image"></i> Выбрать файл</label>
+            <div id="file-preview" class="file-preview"></div>
+        </div>
+        <button type="submit" class="primary-btn">Отправить</button>
+    </form>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script src="/static/profile/profile.js"></script>
+<script src="/static/report/report.js"></script>
+{% endblock %}

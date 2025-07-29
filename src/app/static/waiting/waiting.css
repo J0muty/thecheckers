@@ -2,10 +2,10 @@
 
 :root {
     --background-color: #f3f4f6;
-    --surface-color: #ffffff;
-    --accent-color:  #3B82F6;
-    --button-color:  #2563EB;
-    --text-color:    #111827;
+    --surface-color:    #ffffff;
+    --accent-color:     #3B82F6;
+    --button-color:     #2563EB;
+    --text-color:       #111827;
     --secondary-text-color: #6B7280;
     --font-family: 'Rubik', sans-serif;
     --border-radius: 12px;
@@ -13,11 +13,11 @@
 
 .dark-mode {
     --background-color: #1F2937;
-    --surface-color:   #111827;
-    --button-color:    #1E40AF;
-    --text-color:      #F9FAFB;
+    --surface-color:    #111827;
+    --button-color:     #1E40AF;
+    --text-color:       #F9FAFB;
     --secondary-text-color: #9CA3AF;
-    --accent-color:    #3B82F6;
+    --accent-color:     #3B82F6;
 }
 
 * {
@@ -30,6 +30,9 @@ html,
 body {
     width: 100%;
     height: 100%;
+    min-width: 350px;
+    min-height: 350px;
+    overflow: auto;
     background: var(--background-color);
     color: var(--text-color);
     font-family: var(--font-family);
@@ -41,7 +44,7 @@ body {
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    height: 100vh;
+    min-height: 100vh;
     gap: 20px;
 }
 
@@ -74,48 +77,5 @@ body {
     transition: background-color 0.3s ease, transform 0.2s ease;
 }
 
-#cancelBtn:hover {
-    background: var(--accent-color);
-    transform: translateY(-1px);
-}
-
-#cancelBtn:active {
-    transform: translateY(0);
-}
-
-.toast-container {
-    position: fixed;
-    top: 16px;
-    right: 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    z-index: 2000;
-}
-
-.toast {
-    min-width: 240px;
-    padding: 12px 18px;
-    border-radius: var(--border-radius);
-    background: var(--surface-color);
-    color: var(--text-color);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, .15);
-    font-size: .95rem;
-    animation: toast-slide-in .3s ease,
-               toast-fade-out .3s ease forwards var(--toast-duration);
-}
-.toast.success { background: #dcfce7; color: #166534; }
-.toast.error { background: #fee2e2; color: #991b1b; }
-
-@keyframes toast-slide-in {
-    from { opacity: 0; transform: translateX(100%); }
-    to { opacity: 1; transform: translateX(0); }
-}
-
-@keyframes toast-fade-out {
-    to { opacity: 0; transform: translateX(100%); }
-}
-
-.dark-mode .toast { background: #374151; color: #F9FAFB; }
-.dark-mode .toast.success { background: #14532d; color: #dcfce7; }
-.dark-mode .toast.error { background: #7f1d1d; color: #fee2e2; }
+#cancelBtn:hover   { background: var(--accent-color); transform: translateY(-1px); }
+#cancelBtn:active  { transform: translateY(0); }

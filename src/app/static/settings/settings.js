@@ -131,6 +131,82 @@ document.addEventListener('DOMContentLoaded', () => {
         showNotification(okMsg, 'success');
         setTimeout(() => location.reload(), 700);
     });
+    
+    const delBtn = document.getElementById('delete-account-btn');
+    const delModal = document.getElementById('delete-modal');
+    const delClose = document.getElementById('delete-close');
+    const delForm = document.getElementById('delete-form');
+    const stepLogin = document.getElementById('delete-step-login');
+    const stepCode = document.getElementById('delete-step-code');
+    const stepConfirm = document.getElementById('delete-step-confirm');
+    const nextLogin = document.getElementById('del-next');
+    const nextCode = document.getElementById('del-next-code');
+    const confirmBtn = document.getElementById('del-confirm');
+    const cancelBtn = document.getElementById('del-cancel');
+    const loginInput = document.getElementById('del-login');
+    const passInput = document.getElementById('del-password');
+    const codeInputDel = document.getElementById('del-code');
+
+
+    function showDelModal() {
+        delModal.classList.remove('hidden');
+        stepLogin.classList.remove('hidden');
+        if (stepCode) stepCode.classList.add('hidden');
+        stepConfirm.classList.add('hidden');
+    }
+    function hideDelModal() {
+        delModal.classList.add('hidden');
+    }
+
+    if (delBtn) delBtn.addEventListener('click', e => { e.preventDefault(); showDelModal(); });
+    if (delClose) delClose.addEventListener('click', hideDelModal);
+    if (nextLogin) nextLogin.addEventListener('click', e => {
+        e.preventDefault();
+        if (stepCode) {
+            stepLogin.classList.add('hidden');
+            stepCode.classList.remove('hidden');
+        } else {
+            stepLogin.classList.add('hidden');
+            stepConfirm.classList.remove('hidden');
+        }
+    });
+    if (nextCode) nextCode.addEventListener('click', e => {
+        e.preventDefault();
+        stepCode.classList.add('hidden');
+        stepConfirm.classList.remove('hidden');
+    });
+    if (cancelBtn) cancelBtn.addEventListener('click', hideDelModal);
+    if (confirmBtn) confirmBtn.addEventListener('click', async e => {
+        e.preventDefault();
+        const params = new URLSearchParams({
+            login: loginInput.value.trim(),
+            password: passInput.value,
+        });
+        if (codeInputDel) params.append('code', codeInputDel.value.trim());
+        const resp = await fetch('/api/delete_account', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: params
+        });
+        if (resp.ok) {
+            window.location.href = '/';
+        } else {
+            const data = await resp.json().catch(() => ({}));
+            showNotification(data.error || 'Ошибка удаления', 'error');
+            hideDelModal();
+        }
+    });
+    if (delForm) {
+        delForm.addEventListener('submit', e => {
+            e.preventDefault();
+        });
+        stepConfirm.addEventListener('keydown', e => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                hideDelModal();
+            }
+        });
+    }
 
     ['change-password-btn','change-email-btn'].forEach(id => {
         const btn = document.getElementById(id);

@@ -54,16 +54,20 @@
     }
 }
 
-.left-panel {
+@media (max-width: 480px) {
+    .stats-wrapper {
+        gap: 24px;
+    }
+}
+
+.left-panel,
+.right-panel {
     display: flex;
     flex-direction: column;
     gap: 32px;
 }
 
 .right-panel {
-    display: flex;
-    flex-direction: column;
-    gap: 32px;
     align-items: center;
 }
 
@@ -163,8 +167,14 @@
     box-shadow: 0 4px 12px rgba(0,0,0,0.05);
 }
 
+.history-wrapper,
+.history-wrapper * {
+    user-select: text;
+}
+
 .history-wrapper {
     max-height: 24rem;
+    min-height: 14rem;
     overflow-y: auto;
     overflow-x: auto;
     margin-bottom: 12px;
@@ -185,6 +195,7 @@
 
 .history-table {
     width: 100%;
+    min-width: 520px;
     border-collapse: collapse;
     table-layout: fixed;
 }
@@ -194,9 +205,34 @@
     width: 25%;
     padding: 8px 12px;
     text-align: center;
-    overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    text-overflow: unset;
+    font-size: clamp(0.85rem, 0.9vw, 1rem);
+}
+
+.history-table td.date {
+    scrollbar-width: none;
+}
+.history-table td.date::-webkit-scrollbar {
+    display: none;
+}
+
+.history-table th::-webkit-scrollbar,
+.history-table td::-webkit-scrollbar {
+    height: 4px;
+}
+
+.history-table th::-webkit-scrollbar-thumb,
+.history-table td::-webkit-scrollbar-thumb {
+    background: rgba(0,0,0,0.35);
+    border-radius: 2px;
+}
+
+.dark-mode .history-table th::-webkit-scrollbar-thumb,
+.dark-mode .history-table td::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.25);
 }
 
 .history-table th {
@@ -236,8 +272,19 @@
     background: var(--button-color);
     color: #fff;
     cursor: pointer;
+    user-select: none;
 }
 
 .history-controls button:hover {
     background: var(--accent-color);
+}
+
+@media (max-width: 540px) {
+    .history-table {
+        min-width: 600px;
+    }
+    .history-table th,
+    .history-table td {
+        font-size: 0.95rem;
+    }
 }

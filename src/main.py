@@ -4,6 +4,7 @@ import logging
 from contextlib import asynccontextmanager
 from starlette.middleware.sessions import SessionMiddleware
 from src.app.middleware.session_validation import SessionValidationMiddleware
+from src.app.middleware.guest_middleware import GuestMiddleware
 from src.app.routers import (
     pages_router,
     auth_router,
@@ -16,6 +17,7 @@ from src.app.routers import (
     lobby_router,
     ws_router,
     chat_router,
+    report_router
 )
 from src.settings.settings import static_files
 from src.base import postgres, redis
@@ -33,6 +35,7 @@ async def lifespan(_app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 app.add_middleware(SessionValidationMiddleware)
+app.add_middleware(GuestMiddleware)
 app.add_middleware(SessionMiddleware, secret_key="absolutesecretkey")
 app.include_router(pages_router)
 app.include_router(auth_router)
@@ -45,9 +48,21 @@ app.include_router(lobby_router)
 app.include_router(ws_router)
 app.include_router(single_router)
 app.include_router(chat_router)
+app.include_router(report_router)
 
 app.mount("/static", static_files, name="static")
 
 
+logging.getLogger("watchfiles").setLevel(logging.CRITICAL)
+logging.getLogger("watchfiles.main").disabled = True
+logging.getLogger("uvicorn.access").disabled = True
+
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="127.0.0.1", port=1337)
+    uvicorn.run(
+        "main:app",
+        host="127.0.0.1",
+        port=1337,
+        reload=True,
+        reload_dirs=["src"],
+        reload_excludes=[".venv", ".git", "__pycache__"]
+    )

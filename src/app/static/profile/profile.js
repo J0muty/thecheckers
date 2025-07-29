@@ -35,7 +35,7 @@ function appendHistoryRows(items) {
         const elo = item.elo_change;
         const eloText = elo === null || elo === undefined ? '-' : (elo > 0 ? `+${elo}` : `${elo}`);
         tr.innerHTML = `
-            <td>${date.toLocaleString('ru-RU')}</td>
+            <td class="date">${date.toLocaleString('ru-RU')}</td>
             <td>${item.mode}</td>
             <td class="result-cell ${item.result[0]}">${item.result[0].toUpperCase()}</td>
             <td>${eloText}</td>`;

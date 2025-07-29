@@ -9,6 +9,7 @@
     --secondary-text-color: #6B7280;
     --font-family: 'Rubik', sans-serif;
     --border-radius: 12px;
+    --vh: 1vh;
 }
 
 .dark-mode {
@@ -27,18 +28,22 @@
 }
 
 html, body {
-    height: 100%;
+    height: auto;
+    min-height: 100%;
     background: var(--background-color);
     color: var(--text-color);
     font-family: var(--font-family);
     transition: background 0.3s ease, color 0.3s ease;
+    overflow-y: auto;
+    -webkit-text-size-adjust: 100%;
 }
 
-body {
+.page {
+    min-height: calc(var(--vh) * 100);
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: 100vh;
+    padding: 24px 0;
 }
 
 .container {
@@ -50,6 +55,7 @@ body {
     box-shadow: 0 4px 10px rgba(0,0,0,0.2);
     width: 100%;
     max-width: 400px;
+    margin: 0 16px;
 }
 
 .back-arrow {
@@ -94,6 +100,8 @@ h1 {
     background: transparent;
     color: var(--text-color);
     font-size: 16px;
+    min-height: 48px;
+    line-height: 1.3;
 }
 
 .input-group.has-toggle input {
@@ -111,6 +119,7 @@ h1 {
     background: var(--surface-color);
     padding: 0 4px;
     z-index: 1;
+    font-size: 16px;
 }
 
 .input-group input:focus + label,
@@ -139,6 +148,8 @@ h1 {
     width: 24px;
     height: 24px;
     stroke: var(--secondary-text-color);
+    fill: none;
+    transition: stroke .2s ease;
 }
 
 .toggle-password .eye-slash {
@@ -155,6 +166,9 @@ button {
     font-size: 16px;
     cursor: pointer;
     transition: background-color 0.3s ease, transform 0.2s ease;
+    min-height: 48px;
+    line-height: 1.3;
+    touch-action: manipulation;
 }
 
 button:hover {
@@ -179,4 +193,66 @@ p a {
 
 p a:hover {
     text-decoration: underline;
+}
+
+input:focus,
+input:focus-visible{
+    outline:none;
+}
+input:-webkit-autofill,
+input:autofill{
+    box-shadow:0 0 0 1000px var(--surface-color) inset !important;
+    -webkit-text-fill-color:var(--text-color) !important;
+    color:var(--text-color) !important;
+}
+.toggle-password svg{
+    width:24px;height:24px;
+    stroke:var(--secondary-text-color);
+    fill:none;
+    transition:stroke .2s ease;
+}
+.toggle-password:hover svg{
+    stroke:var(--accent-color);
+}
+.dark-mode .toggle-password svg{
+    stroke:var(--secondary-text-color);
+}
+.input-error{margin-top:4px;color:#ef4444;font-size:.875rem;opacity:0;max-height:0;transition:opacity .3s ease,max-height .3s ease;}
+.input-error.visible{opacity:1;max-height:40px;}
+input.error{border-color:#ef4444;}
+input.error+label{color:#ef4444;}
+.input-group input.error {
+    border-color: #ef4444;
+    box-shadow: 0 0 5px #ef4444;
+}
+.input-group input.error + label {
+    color: #ef4444;
+}
+.input-group input.error:focus {
+    border-color: #ef4444;
+    box-shadow: 0 0 5px #ef4444;
+}
+.input-group input.error:focus + label {
+    color: #ef4444;
+}
+.input-group.error label { color: #ef4444; }
+
+@media (max-height: 600px), (max-width: 360px) {
+    .page {
+        align-items: flex-start;
+    }
+    .container {
+        margin: 24px 16px 32px;
+        box-shadow: none;
+        padding: 32px 20px;
+    }
+    h1 {
+        font-size: 20px;
+        margin-bottom: 20px;
+    }
+    .back-arrow {
+        top: 12px;
+        left: 12px;
+        font-size: 18px;
+    }
 }
