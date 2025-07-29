@@ -237,7 +237,7 @@ async def api_make_move(game_id: str, req: MoveRequest):
     if len(history_before) != req.history_len:
         raise HTTPException(status_code=409, detail="Out of sync")
     try:
-        new_board = await validate_move(board, req.start, req.end, req.player)
+        new_board = validate_move(board, req.start, req.end, req.player)
     except ValueError as e:
         logger.error(
             "Invalid move in game %s by %s: %s -> %s (%s). History: %s",
