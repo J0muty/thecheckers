@@ -3,6 +3,7 @@ import logging
 import time
 import os
 import orjson
+import json
 from functools import wraps
 from fastapi import Request, APIRouter, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
@@ -58,6 +59,8 @@ from src.app.achievements.rating import check_rating_achievements
 from src.app.utils.guest import is_guest, get_display_name 
 from logging.handlers import QueueHandler, QueueListener
 import queue
+from pydantic import BaseModel
+from fastapi.responses import JSONResponse
 
 os.makedirs("src/logs", exist_ok=True)
 logger = logging.getLogger("board_router")
@@ -107,6 +110,10 @@ def determine_win_reason(board: Board, winner: str) -> str:
         return "no_moves"
     return "unknown"
 
+class FrontendLog(BaseModel):
+    function: str
+    duration: float
+
 class MoveRequest(BaseModel):
     start: Point
     end: Point
@@ -137,6 +144,11 @@ class PlayerAction(BaseModel):
 class DrawResponse(BaseModel):
     player: str
     accept: bool
+
+@board_router.post("/api/frontend-log")
+async def api_frontend_log(log: FrontendLog):
+    logger.info(f"Frontend: {log.function} выполнилась за {log.duration:.2f} ms")
+    return JSONResponse({"status": "ok"})
 
 @board_router.get("/board", name="board")
 async def board_redirect(request: Request):
