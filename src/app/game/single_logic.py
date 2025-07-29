@@ -60,7 +60,7 @@ async def random_bot_move(board: Board, player: str) -> Tuple[Board, Tuple[int, 
     if not moves:
         return board, (-1, -1), (-1, -1)
     start, end = random.choice(moves)
-    new_board = await validate_move(board, start, end, player)
+    new_board = validate_move(board, start, end, player)
     return new_board, start, end
 
 async def heuristic_bot_move(board: Board, player: str) -> Tuple[Board, Tuple[int, int], Tuple[int, int]]:
@@ -71,7 +71,7 @@ async def heuristic_bot_move(board: Board, player: str) -> Tuple[Board, Tuple[in
     if not moves:
         return board, best_move[0], best_move[1]
     for start, end in moves:
-        nb = await validate_move(board, start, end, player)
+        nb = validate_move(board, start, end, player)
         s = evaluate_board(nb, player)
         if s > best_score:
             best_score = s
@@ -88,7 +88,7 @@ async def minimax(board: Board, current: str, me: str, depth: int, alpha: float,
     if current == me:
         value = -math.inf
         for start, end in moves:
-            nb = await validate_move(board, start, end, current)
+            nb = validate_move(board, start, end, current)
             score = await minimax(nb, 'white' if current == 'black' else 'black', me, depth - 1, alpha, beta)
             value = max(value, score)
             alpha = max(alpha, value)
@@ -97,7 +97,7 @@ async def minimax(board: Board, current: str, me: str, depth: int, alpha: float,
         return value
     value = math.inf
     for start, end in moves:
-        nb = await validate_move(board, start, end, current)
+        nb = validate_move(board, start, end, current)
         score = await minimax(nb, 'white' if current == 'black' else 'black', me, depth - 1, alpha, beta)
         value = min(value, score)
         beta = min(beta, value)
@@ -113,7 +113,7 @@ async def minimax_bot_move(board: Board, player: str, depth: int = 4) -> Tuple[B
     if not moves:
         return board, best_move[0], best_move[1]
     for start, end in moves:
-        nb = await validate_move(board, start, end, player)
+        nb = validate_move(board, start, end, player)
         score = await minimax(nb, 'white' if player == 'black' else 'black', player, depth - 1, -math.inf, math.inf)
         if score > best_score:
             best_score = score
@@ -143,13 +143,13 @@ async def bot_turn(
             break
         if difficulty == "easy":
             dest = random.choice(caps)
-            nb = await validate_move(board, end, dest, player)
+            nb = validate_move(board, end, dest, player)
         elif difficulty == "medium":
             best_score = -math.inf
             dest = caps[0]
             nb = board
             for d in caps:
-                cb = await validate_move(board, end, d, player)
+                cb = validate_move(board, end, d, player)
                 sc = evaluate_board(cb, player)
                 if sc > best_score:
                     best_score = sc
@@ -160,7 +160,7 @@ async def bot_turn(
             dest = caps[0]
             nb = board
             for d in caps:
-                cb = await validate_move(board, end, d, player)
+                cb = validate_move(board, end, d, player)
                 sc = await minimax(
                     cb,
                     'white' if player == 'black' else 'black',

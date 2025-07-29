@@ -31,7 +31,7 @@ async def get_board_state(game_id: str, create: bool = True) -> Board | None:
     if not raw:
         if not create:
             return None
-        board = await create_initial_board()
+        board = create_initial_board()
         await redis_client.set(key, json.dumps(board))
         return board
     return json.loads(raw)
@@ -131,11 +131,11 @@ async def get_board_state_at(game_id: str, index: int) -> Board:
         end = (8 - int(end_str[1]), ord(end_str[0]) - 65)
         parsed_moves.append((start, end))
 
-    board = await create_initial_board()
+    board = create_initial_board()
     player = "white"
 
     for i, (start, end) in enumerate(parsed_moves):
-        board = await validate_move(board, start, end, player)
+        board = validate_move(board, start, end, player)
         dr = abs(end[0] - start[0])
         dc = abs(end[1] - start[1])
         is_capture = dr > 1 or dc > 1

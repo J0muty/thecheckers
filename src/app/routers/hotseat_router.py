@@ -153,7 +153,7 @@ async def api_hotseat_moves(board_id: str, row: int, col: int, player: str):
     for r in range(8):
         for c in range(8):
             try:
-                await validate_move(board, (row, col), (r, c), player)
+                validate_move(board, (row, col), (r, c), player)
                 moves.append((r, c))
             except ValueError:
                 pass
@@ -177,7 +177,7 @@ async def api_hotseat_move(board_id: str, req: MoveRequest):
         raise HTTPException(status_code=400, detail="Game finished")
     board = await get_board_state(board_id, create=False)
     try:
-        new_board = await validate_move(board, req.start, req.end, req.player)
+        new_board = validate_move(board, req.start, req.end, req.player)
     except ValueError as e:
         raise ValueError(str(e))
     await save_board_state(board_id, new_board)
