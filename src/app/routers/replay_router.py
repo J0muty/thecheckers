@@ -5,35 +5,16 @@ from typing import List, Optional, Tuple
 
 from src.settings.settings import templates
 from src.base.postgres import get_recorded_game
-from src.app.game.game_logic import validate_move, create_initial_board
+from src.app.game.game_logic import Board, rebuild_board_from_history
 
-Board = List[List[Optional[str]]]
 Point = Tuple[int, int]
 
 replay_router = APIRouter()
 
 
 async def board_from_history(history: List[str], index: int) -> Board:
-    if index > len(history):
-        index = len(history)
-    parsed: List[Tuple[Point, Point]] = []
-    for mv in history[:index]:
-        start_str, end_str = mv.split("->")
-        start = (8 - int(start_str[1]), ord(start_str[0]) - 65)
-        end = (8 - int(end_str[1]), ord(end_str[0]) - 65)
-        parsed.append((start, end))
-
-    board = await create_initial_board()
-    player = "white"
-    for i, (s, e) in enumerate(parsed):
-        board = await validate_move(board, s, e, player)
-        dr = abs(e[0] - s[0])
-        dc = abs(e[1] - s[1])
-        is_cap = dr > 1 or dc > 1
-        next_chain = is_cap and i + 1 < len(parsed) and parsed[i + 1][0] == e
-        if not next_chain:
-            player = "black" if player == "white" else "white"
-    return board
+    safe_index = min(index, len(history))
+    return rebuild_board_from_history(history, index=safe_index)
 
 
 class ReplayState(BaseModel):

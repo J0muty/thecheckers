@@ -8,22 +8,28 @@ document.addEventListener('DOMContentLoaded', () => {
         toggleBtn.addEventListener('click', () => sidebar.classList.toggle('open'));
     }
 
-    if (localStorage.theme === 'dark') {
-        document.documentElement.classList.add('dark-mode');
-        if (themeIcon) themeIcon.classList.replace('fa-moon', 'fa-sun');
-    } else {
-        document.documentElement.classList.remove('dark-mode');
-        if (themeIcon) themeIcon.classList.replace('fa-sun', 'fa-moon');
-    }
+    const applyTheme = theme => {
+        document.documentElement.classList.toggle('dark-mode', theme === 'dark');
+        localStorage.theme = theme;
+        if (themeIcon) {
+            themeIcon.classList.toggle('fa-sun', theme === 'dark');
+            themeIcon.classList.toggle('fa-moon', theme !== 'dark');
+        }
+        if (themeToggle) {
+            themeToggle.setAttribute('aria-pressed', theme === 'dark' ? 'true' : 'false');
+            themeToggle.setAttribute('aria-label', theme === 'dark' ? 'Включить светлую тему' : 'Включить темную тему');
+            themeToggle.title = theme === 'dark' ? 'Светлая тема' : 'Темная тема';
+        }
+    };
+
+    const initialTheme = localStorage.theme === 'dark' || localStorage.theme === 'light'
+        ? localStorage.theme
+        : (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    applyTheme(initialTheme);
 
     if (themeToggle) {
         themeToggle.addEventListener('click', () => {
-            const isDark = document.documentElement.classList.toggle('dark-mode');
-            localStorage.theme = isDark ? 'dark' : 'light';
-            if (themeIcon) {
-                themeIcon.classList.toggle('fa-moon');
-                themeIcon.classList.toggle('fa-sun');
-            }
+            applyTheme(document.documentElement.classList.contains('dark-mode') ? 'light' : 'dark');
         });
     }
 

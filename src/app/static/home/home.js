@@ -268,13 +268,31 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 const diff = document.querySelector('input[name="difficulty"]:checked').value;
                 const color = document.querySelector('input[name="spcolor"]:checked').value;
-                const res = await fetch('/api/single/start', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ difficulty: diff, color })
-                });
-                const data = await res.json();
-                window.location.href = `/singleplayer/${data.game_id}`;
+                startSingleBtn.disabled = true;
+                try {
+                    const res = await fetch('/api/single/start', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ difficulty: diff, color })
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data.game_id) {
+                            window.location.href = `/singleplayer/${data.game_id}`;
+                            return;
+                        }
+                    }
+                    if (res.status === 401 || res.status === 403) {
+                        const params = new URLSearchParams({ difficulty: diff, color });
+                        window.location.href = `/singleplayer?${params.toString()}`;
+                        return;
+                    }
+                    showNotification('Не удалось начать одиночную игру', 'error');
+                } catch {
+                    showNotification('Сервер недоступен. Попробуйте ещё раз', 'error');
+                } finally {
+                    startSingleBtn.disabled = false;
+                }
             });
         }
     }
