@@ -11,16 +11,21 @@ from .game_logic import (
     Board,
     Move,
     TurnSequence,
+    DIAGONALS,
     generate_turn_sequences,
     game_status,
     legal_piece_moves,
     opponent,
     owner,
 )
+from .bot_memory import DEFAULT_MEMORY_PATH, MoveMemory
+from .bot_profiles import EvaluationWeights, HARD_WEIGHTS, normalize_difficulty, profile_for_difficulty
 
 WIN_SCORE = 1_000_000
 MAN_VALUE = 100
 KING_VALUE = 320
+DEFAULT_MEMORY_STRENGTH = 240
+MAX_ROOT_MEMORY_BONUS = 220
 logger = logging.getLogger(__name__)
 CENTER_SQUARES = {
     (2, 1), (2, 3), (2, 5), (2, 7),
@@ -45,6 +50,9 @@ class TTEntry:
 @dataclass
 class SearchContext:
     deadline: float
+    weights: EvaluationWeights = HARD_WEIGHTS
+    memory: MoveMemory | None = None
+    memory_strength: int = DEFAULT_MEMORY_STRENGTH
     cache: dict[tuple, TTEntry] = field(default_factory=dict)
     history: dict[tuple[str, tuple[Move, ...]], int] = field(default_factory=dict)
     nodes: int = 0
@@ -60,6 +68,9 @@ class PieceStats:
     edge: int
     connected: int
     promotion_ready: int
+    activity: int
+    king_mobility: int
+    trapped: int
 
     @property
     def total(self) -> int:
@@ -97,15 +108,40 @@ def _check_timeout(ctx: SearchContext) -> None:
 
 
 
+def _piece_activity(board: Board, row: int, col: int, piece: str, player: str) -> int:
+    activity = 0
+    if piece.isupper():
+        for dr, dc in DIAGONALS:
+            nr, nc = row + dr, col + dc
+            while 0 <= nr < 8 and 0 <= nc < 8 and board[nr][nc] is None:
+                activity += 1
+                nr += dr
+                nc += dc
+        return activity
+
+    direction = -1 if player == "white" else 1
+    for dc in (-1, 1):
+        nr, nc = row + direction, col + dc
+        if 0 <= nr < 8 and 0 <= nc < 8 and board[nr][nc] is None:
+            activity += 1
+    return activity
+
+
 def piece_stats(board: Board, player: str) -> PieceStats:
     men = kings = center = advancement = back_rank = edge = connected = promotion_ready = 0
+    activity = king_mobility = trapped = 0
     for row in range(8):
         for col in range(8):
             piece = board[row][col]
             if not piece or owner(piece) != player:
                 continue
+            piece_activity = _piece_activity(board, row, col, piece, player)
+            activity += piece_activity
+            if piece_activity == 0:
+                trapped += 1
             if piece.isupper():
                 kings += 1
+                king_mobility += piece_activity
             else:
                 men += 1
                 advancement += (7 - row) if player == "white" else row
@@ -133,6 +169,9 @@ def piece_stats(board: Board, player: str) -> PieceStats:
         edge=edge,
         connected=connected,
         promotion_ready=promotion_ready,
+        activity=activity,
+        king_mobility=king_mobility,
+        trapped=trapped,
     )
 
 
@@ -145,14 +184,29 @@ def threatened_positions(sequences: Iterable[TurnSequence]) -> set[tuple[int, in
 
 
 
-def threatened_material(board: Board, threatened: set[tuple[int, int]], player: str) -> int:
+def threatened_material(
+    board: Board,
+    threatened: set[tuple[int, int]],
+    player: str,
+    weights: EvaluationWeights = HARD_WEIGHTS,
+) -> int:
     total = 0
     for row, col in threatened:
         piece = board[row][col]
         if not piece or owner(piece) != player:
             continue
-        total += KING_VALUE if piece.isupper() else MAN_VALUE
+        total += weights.king_value if piece.isupper() else weights.man_value
     return total
+
+
+
+def captured_material(
+    board: Board,
+    captured: Iterable[tuple[int, int]],
+    player: str,
+    weights: EvaluationWeights = HARD_WEIGHTS,
+) -> int:
+    return threatened_material(board, set(captured), player, weights)
 
 
 
@@ -165,7 +219,11 @@ def best_capture_length(sequences: Iterable[TurnSequence]) -> int:
 
 
 
-def evaluate_board(board: Board, player: str) -> int:
+def evaluate_board(
+    board: Board,
+    player: str,
+    weights: EvaluationWeights = HARD_WEIGHTS,
+) -> int:
     status = game_status(board)
     if status == f"{player}_win":
         return WIN_SCORE
@@ -179,37 +237,40 @@ def evaluate_board(board: Board, player: str) -> int:
     my_stats = piece_stats(board, player)
     opp_stats = piece_stats(board, enemy)
     total_pieces = my_stats.total + opp_stats.total
-    endgame_king_bonus = 35 if total_pieces <= 10 else 0
-    king_value = KING_VALUE + endgame_king_bonus
+    endgame_king_bonus = weights.endgame_king_bonus if total_pieces <= 10 else 0
+    king_value = weights.king_value + endgame_king_bonus
 
-    my_material = my_stats.men * MAN_VALUE + my_stats.kings * king_value
-    opp_material = opp_stats.men * MAN_VALUE + opp_stats.kings * king_value
+    my_material = my_stats.men * weights.man_value + my_stats.kings * king_value
+    opp_material = opp_stats.men * weights.man_value + opp_stats.kings * king_value
 
     my_threatened = threatened_positions(seq for seq in opp_sequences if seq.is_capture)
     opp_threatened = threatened_positions(seq for seq in my_sequences if seq.is_capture)
 
-    my_threatened_material = threatened_material(board, my_threatened, player)
-    opp_threatened_material = threatened_material(board, opp_threatened, enemy)
+    my_threatened_material = threatened_material(board, my_threatened, player, weights)
+    opp_threatened_material = threatened_material(board, opp_threatened, enemy, weights)
 
     my_capture_pressure = best_capture_length(my_sequences)
     opp_capture_pressure = best_capture_length(opp_sequences)
 
     score = 0
     score += my_material - opp_material
-    score += (my_stats.center - opp_stats.center) * 8
-    score += (my_stats.advancement - opp_stats.advancement) * 7
-    score += (my_stats.back_rank - opp_stats.back_rank) * 5
-    score += (my_stats.connected - opp_stats.connected) * 6
-    score += (my_stats.promotion_ready - opp_stats.promotion_ready) * 18
-    score += (len(my_sequences) - len(opp_sequences)) * 5
-    score += (my_capture_pressure - opp_capture_pressure) * 28
-    score += opp_threatened_material - my_threatened_material
-    score += (my_stats.kings - opp_stats.kings) * 32
-    score += (opp_stats.edge - my_stats.edge) * 3
+    score += (my_stats.center - opp_stats.center) * weights.center
+    score += (my_stats.advancement - opp_stats.advancement) * weights.advancement
+    score += (my_stats.back_rank - opp_stats.back_rank) * weights.back_rank
+    score += (my_stats.connected - opp_stats.connected) * weights.connected
+    score += (my_stats.promotion_ready - opp_stats.promotion_ready) * weights.promotion_ready
+    score += (len(my_sequences) - len(opp_sequences)) * weights.mobility
+    score += (my_capture_pressure - opp_capture_pressure) * weights.capture_pressure
+    score += (opp_threatened_material - my_threatened_material) * weights.threatened_material
+    score += (my_stats.kings - opp_stats.kings) * weights.king_count
+    score += (opp_stats.edge - my_stats.edge) * weights.edge_penalty
+    score += (my_stats.activity - opp_stats.activity) * weights.piece_activity
+    score += (my_stats.king_mobility - opp_stats.king_mobility) * weights.king_mobility
+    score += (opp_stats.trapped - my_stats.trapped) * weights.trapped_piece
 
     if total_pieces <= 8:
-        score += (my_stats.kings - opp_stats.kings) * 24
-        score += (len(my_sequences) - len(opp_sequences)) * 3
+        score += (my_stats.kings - opp_stats.kings) * weights.endgame_king_count
+        score += (len(my_sequences) - len(opp_sequences)) * weights.endgame_mobility
 
     return score
 
@@ -251,6 +312,61 @@ def move_priority(
     return score
 
 
+def root_tactical_bonus(sequence: TurnSequence, weights: EvaluationWeights = HARD_WEIGHTS) -> int:
+    if not sequence.is_capture:
+        return 0
+    capture_value = weights.man_value // 2 + weights.capture_pressure // 2
+    return len(sequence.captured_positions) * capture_value
+
+
+def root_memory_bonus(
+    board: Board,
+    player: str,
+    sequence: TurnSequence,
+    memory: MoveMemory | None,
+    strength: int,
+) -> int:
+    if memory is None or strength <= 0:
+        return 0
+    raw_bonus = memory.bias(board, player, sequence.steps, strength=strength)
+    if raw_bonus == 0:
+        return 0
+    limit = max(60, min(MAX_ROOT_MEMORY_BONUS, strength // 3))
+    return max(-limit, min(limit, raw_bonus))
+
+
+def root_safety_penalty(
+    board_after: Board,
+    player: str,
+    weights: EvaluationWeights = HARD_WEIGHTS,
+    *,
+    own_capture_value: int = 0,
+    own_capture_count: int = 0,
+) -> int:
+    enemy = opponent(player)
+    enemy_sequences = generate_turn_sequences(board_after, enemy)
+    if not enemy_sequences:
+        return 0
+
+    penalty = 0
+    capture_sequences = [seq for seq in enemy_sequences if seq.is_capture]
+    if capture_sequences:
+        enemy_capture_value = max(
+            captured_material(board_after, seq.captured_positions, player, weights)
+            for seq in capture_sequences
+        )
+        enemy_capture_count = max(len(seq.captured_positions) for seq in capture_sequences)
+        excess_value = max(0, enemy_capture_value - own_capture_value)
+        excess_count = max(0, enemy_capture_count - own_capture_count)
+        penalty += excess_value * 3
+        penalty += excess_count * (weights.man_value // 2)
+
+    if any(sequence_promotes(board_after, seq) for seq in enemy_sequences):
+        penalty += weights.king_value // 2 + weights.promotion_ready * 2
+
+    return penalty
+
+
 
 def ordered_turn_sequences(
     board: Board,
@@ -277,7 +393,7 @@ def quiescence(
     depth: int = 0,
 ) -> int:
     _check_timeout(ctx)
-    stand_pat = evaluate_board(board, root_player)
+    stand_pat = evaluate_board(board, root_player, ctx.weights)
     if depth >= 8:
         return stand_pat
 
@@ -357,7 +473,7 @@ def alpha_beta(
 
     sequences = ordered_turn_sequences(board, current, ctx.history, tt_steps)
     if not sequences:
-        return evaluate_board(board, root_player)
+        return evaluate_board(board, root_player, ctx.weights)
 
     maximizing = current == root_player
     next_player = opponent(current)
@@ -425,20 +541,41 @@ def search_root(
     tt_entry = ctx.cache.get(board_signature(board, player))
     tt_steps = preferred_steps or (tt_entry.best_steps if tt_entry else None)
     ordered = list(sequences)
+    safety_penalties = {
+        seq.steps: root_safety_penalty(
+            seq.board,
+            player,
+            ctx.weights,
+            own_capture_value=captured_material(
+                board,
+                seq.captured_positions,
+                opponent(player),
+                ctx.weights,
+            ),
+            own_capture_count=len(seq.captured_positions),
+        )
+        for seq in ordered
+    }
     ordered.sort(
-        key=lambda seq: move_priority(board, seq, player, history=ctx.history, tt_steps=tt_steps),
+        key=lambda seq: (
+            move_priority(board, seq, player, history=ctx.history, tt_steps=tt_steps)
+            + root_tactical_bonus(seq, ctx.weights)
+            + root_memory_bonus(board, player, seq, ctx.memory, ctx.memory_strength)
+            - safety_penalties[seq.steps]
+        ),
         reverse=True,
     )
 
     best_sequence = ordered[0]
     best_score = -math.inf
+    best_raw_score = -math.inf
     alpha = -WIN_SCORE
     beta = WIN_SCORE
     next_player = opponent(player)
 
     for sequence in ordered:
         extension = 1 if depth <= 2 and (sequence.is_capture or sequence_promotes(board, sequence)) else 0
-        score = alpha_beta(
+        raw_score = alpha_beta(
             sequence.board,
             next_player,
             player,
@@ -447,15 +584,21 @@ def search_root(
             beta,
             ctx,
         )
+        score = raw_score
+        if abs(raw_score) < WIN_SCORE // 2:
+            score += root_tactical_bonus(sequence, ctx.weights)
+            score += root_memory_bonus(board, player, sequence, ctx.memory, ctx.memory_strength)
+            score -= safety_penalties[sequence.steps]
         if score > best_score:
             best_score = score
+            best_raw_score = raw_score
             best_sequence = sequence
-        if score > alpha:
-            alpha = score
+        if raw_score > alpha:
+            alpha = raw_score
 
     ctx.cache[board_signature(board, player)] = TTEntry(
         depth=depth,
-        score=int(best_score),
+        score=int(best_raw_score),
         flag="exact",
         best_steps=best_sequence.steps,
     )
@@ -470,11 +613,19 @@ def search_best_turn(
     *,
     max_depth: int,
     time_limit: float,
+    weights: EvaluationWeights = HARD_WEIGHTS,
+    memory: MoveMemory | None = None,
+    memory_strength: int = DEFAULT_MEMORY_STRENGTH,
 ) -> TurnSequence:
     if len(sequences) == 1:
         return sequences[0]
 
-    ctx = SearchContext(deadline=time.perf_counter() + time_limit)
+    ctx = SearchContext(
+        deadline=time.perf_counter() + time_limit,
+        weights=weights,
+        memory=memory,
+        memory_strength=memory_strength,
+    )
     best_sequence = sequences[0]
     preferred_steps = best_sequence.steps
 
@@ -504,8 +655,15 @@ def select_easy_turn(sequences: list[TurnSequence]) -> TurnSequence:
 
 
 
-def select_medium_turn(board: Board, player: str, sequences: list[TurnSequence]) -> TurnSequence:
-    ctx = SearchContext(deadline=time.perf_counter() + 0.2)
+def select_medium_turn(
+    board: Board,
+    player: str,
+    sequences: list[TurnSequence],
+    *,
+    weights: EvaluationWeights = HARD_WEIGHTS,
+    time_limit: float = 0.2,
+) -> TurnSequence:
+    ctx = SearchContext(deadline=time.perf_counter() + time_limit, weights=weights)
     scored: list[tuple[int, TurnSequence]] = []
     for sequence in sequences:
         try:
@@ -521,7 +679,7 @@ def select_medium_turn(board: Board, player: str, sequences: list[TurnSequence])
         except SearchTimeout:
             if scored:
                 break
-            score = evaluate_board(sequence.board, player)
+            score = evaluate_board(sequence.board, player, weights)
         score += len(sequence.captured_positions) * 14
         scored.append((score, sequence))
     scored.sort(key=lambda item: item[0], reverse=True)
@@ -532,33 +690,87 @@ def select_medium_turn(board: Board, player: str, sequences: list[TurnSequence])
 
 
 
-def select_hard_turn(board: Board, player: str, sequences: list[TurnSequence]) -> TurnSequence:
+def select_hard_turn(
+    board: Board,
+    player: str,
+    sequences: list[TurnSequence],
+    *,
+    weights: EvaluationWeights = HARD_WEIGHTS,
+    max_depth: int | None = None,
+    time_limit: float | None = None,
+    memory: MoveMemory | None = None,
+    memory_strength: int = DEFAULT_MEMORY_STRENGTH,
+) -> TurnSequence:
     piece_count = sum(1 for row in board for piece in row if piece)
-    if piece_count > 18:
-        max_depth = 12
-        time_limit = 6.0
-    elif piece_count > 12:
-        max_depth = 13
-        time_limit = 8.0
-    elif piece_count > 8:
-        max_depth = 14
-        time_limit = 10.0
-    else:
-        max_depth = 16
-        time_limit = 12.0
-    return search_best_turn(board, player, sequences, max_depth=max_depth, time_limit=time_limit)
+    if max_depth is None or time_limit is None:
+        if piece_count > 18:
+            default_depth = 12
+            default_time = 6.0
+        elif piece_count > 12:
+            default_depth = 13
+            default_time = 8.0
+        elif piece_count > 8:
+            default_depth = 14
+            default_time = 10.0
+        else:
+            default_depth = 16
+            default_time = 12.0
+        max_depth = default_depth if max_depth is None else max_depth
+        time_limit = default_time if time_limit is None else time_limit
+    return search_best_turn(
+        board,
+        player,
+        sequences,
+        max_depth=max_depth,
+        time_limit=time_limit,
+        weights=weights,
+        memory=memory,
+        memory_strength=memory_strength,
+    )
 
 
 
-def choose_turn(board: Board, player: str, difficulty: str) -> TurnSequence | None:
+def choose_turn(
+    board: Board,
+    player: str,
+    difficulty: str,
+    *,
+    max_depth: int | None = None,
+    time_limit: float | None = None,
+    weights: EvaluationWeights | None = None,
+    memory: MoveMemory | None = None,
+    memory_strength: int = DEFAULT_MEMORY_STRENGTH,
+    use_default_memory: bool = True,
+) -> TurnSequence | None:
+    profile = profile_for_difficulty(difficulty)
+    normalized_difficulty = normalize_difficulty(difficulty)
+    active_weights = weights or profile.weights
+    active_memory = memory
+    if active_memory is None and use_default_memory and normalized_difficulty == "hardcore":
+        active_memory = MoveMemory.load(DEFAULT_MEMORY_PATH)
     sequences = ordered_turn_sequences(board, player)
     if not sequences:
         return None
     if difficulty == "easy":
         return select_easy_turn(sequences)
     if difficulty == "medium":
-        return select_medium_turn(board, player, sequences)
-    return select_hard_turn(board, player, sequences)
+        return select_medium_turn(
+            board,
+            player,
+            sequences,
+            weights=active_weights,
+            time_limit=time_limit or 0.2,
+        )
+    return select_hard_turn(
+        board,
+        player,
+        sequences,
+        weights=active_weights,
+        max_depth=max_depth,
+        time_limit=time_limit,
+        memory=active_memory,
+        memory_strength=memory_strength,
+    )
 
 
 async def bot_turn(
