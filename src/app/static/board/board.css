@@ -265,8 +265,13 @@ body {
 
 .close-sidebar {
     position: absolute;
-    top: 15px;
-    left: 10px;
+    top: 10px;
+    left: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
     font-size: 1.2rem;
     cursor: pointer;
     color: var(--text-color);

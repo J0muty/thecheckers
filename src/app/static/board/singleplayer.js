@@ -729,10 +729,17 @@ returnButton.addEventListener('click', () => {
 
 const menuToggle = document.querySelector('.menu-toggle');
 const rightSidebar = document.querySelector('.right-sidebar');
+const closeSidebar = document.querySelector('.close-sidebar');
 menuToggle.addEventListener('click', e => {
     e.stopPropagation();
     rightSidebar.classList.toggle('open');
 });
+if (closeSidebar) {
+    closeSidebar.addEventListener('click', e => {
+        e.stopPropagation();
+        rightSidebar.classList.remove('open');
+    });
+}
 rightSidebar.addEventListener('click', e => {
     e.stopPropagation();
 });
