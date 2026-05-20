@@ -105,7 +105,7 @@ async def _log_game_result(board_id: str, status: str):
     if not user:
         return
     history = await get_history(board_id)
-    await save_recorded_game(
+    saved = await save_recorded_game(
         board_id,
         None,
         None,
@@ -114,6 +114,8 @@ async def _log_game_result(board_id: str, status: str):
         mode="hotseat",
         ranked=False,
     )
+    if not saved:
+        return
     if str(user).isdigit():
         await record_game(int(user), "hotseat", status, None, game_id=board_id)
 
@@ -425,5 +427,24 @@ async def api_hotseat_end(request: Request, board_id: str):
     if user_id:
         await clear_user_hotseat(str(user_id))
     result = MoveResult(board=board, status="ended", history=history, timers=timers)
+    await board_manager.broadcast(board_id, result.json())
+    return result
+
+
+@hotseat_router.post("/api/hotseat/draw/{board_id}", response_model=MoveResult)
+async def api_hotseat_draw(request: Request, board_id: str):
+    if not await game_exists(board_id):
+        raise HTTPException(status_code=404)
+    board = await get_board_state(board_id, create=False)
+    history = await get_history(board_id)
+    await _log_game_result(board_id, "draw")
+    await freeze_timers(board_id)
+    timers = await get_current_timers(board_id, create=False)
+    await clear_draw_state(board_id)
+    await expire_board(board_id, delay=600)
+    user_id = request.session.get("user_id")
+    if user_id:
+        await clear_user_hotseat(str(user_id))
+    result = MoveResult(board=board, status="draw", history=history, timers=timers)
     await board_manager.broadcast(board_id, result.json())
     return result

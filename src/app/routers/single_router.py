@@ -188,7 +188,7 @@ async def _log_game_result(game_id: str, status: str):
     difficulty = game_difficulties.get(game_id, "easy")
     white_id = int(user) if (color == "white" and str(user).isdigit()) else None
     black_id = int(user) if (color == "black" and str(user).isdigit()) else None
-    await save_recorded_game(
+    saved = await save_recorded_game(
         game_id,
         white_id,
         black_id,
@@ -197,6 +197,10 @@ async def _log_game_result(game_id: str, status: str):
         mode="single",
         ranked=False,
     )
+    if not saved:
+        game_difficulties.pop(game_id, None)
+        game_colors.pop(game_id, None)
+        return
     if str(user).isdigit():
         await record_game(int(user), f"single_{difficulty}", res, None, game_id=game_id)
         await check_bot_achievements(int(user), difficulty, res)

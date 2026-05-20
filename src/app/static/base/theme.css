@@ -1,3 +1,5 @@
+@import url("/static/base/responsive-polish.css");
+
 :root {
     color-scheme: light;
     --background-color: #f6f8fb;
@@ -1381,8 +1383,6 @@ body:not(:has(.game-container))::before {
         gap: 7px;
     }
 }
-@import url("/static/base/responsive-polish.css");
-
 html:has(.game-container),
 body:has(.game-container) {
     width: 100%;

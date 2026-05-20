@@ -52,8 +52,8 @@
             <div class="right-sidebar">
                 <i class="fas fa-times close-sidebar"></i>
                 <ul class="menu-list">
-                    <li class="menu-item" id="menuResign">Сдаться</li>
-                    <li class="menu-item" id="menuDraw">Ничья</li>
+                    <li class="menu-item" id="menuResign" hidden>Сдаться</li>
+                    <li class="menu-item" id="menuDraw" hidden>Ничья</li>
                     <li class="menu-item" id="menuHome">Главная</li>
                 </ul>
             </div>
@@ -62,7 +62,10 @@
     </div>
     <div id="resignModal" class="modal-overlay">
         <div class="modal">
-            <p>Вы уверены, что хотите сдаться? Вы потеряете ранг.</p>
+            <p>
+                Вы уверены, что хотите сдаться?
+                {% if ranked_game %}Вы потеряете ранг.{% else %}Игра будет завершена.{% endif %}
+            </p>
             <div class="modal-buttons">
                 <button id="confirmResignBtn" class="btn-red">Да</button>
                 <button id="cancelResignBtn" class="btn-green">Нет</button>

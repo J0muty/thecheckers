@@ -41,6 +41,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const bell = document.getElementById('notifBell');
     const panel = document.getElementById('notifPanel');
     const countEl = document.getElementById('notifCount');
+    const canUseNotifications = Boolean(
+        bell &&
+        panel &&
+        window.globalUserId &&
+        !String(window.globalUserId).startsWith('ghost_')
+    );
 
     const buildNotifWsUrl = id => {
         const proto = location.protocol === 'https:' ? 'wss' : 'ws';
@@ -108,8 +114,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function setupNotifWs() {
-        if (!window.globalUserId) return;
+        if (!canUseNotifications || window.__notifWsStarted) return;
+        window.__notifWsStarted = true;
         const ws = new WebSocket(buildNotifWsUrl(window.globalUserId));
+        window.__notifWs = ws;
         ws.addEventListener('message', e => {
             try {
                 const data = JSON.parse(e.data);
@@ -125,7 +133,13 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch {}
             loadInvites();
         });
-        ws.addEventListener('close', () => setTimeout(setupNotifWs, 1000));
+        ws.addEventListener('close', () => {
+            if (window.__notifWs === ws) {
+                window.__notifWsStarted = false;
+                window.__notifWs = null;
+                setTimeout(setupNotifWs, 1000);
+            }
+        });
     }
 
     const buildSessionWsUrl = token => {
@@ -134,8 +148,10 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     function setupSessionWs() {
-        if (!window.globalSessionToken) return;
+        if (!window.globalSessionToken || window.__sessionWsStarted) return;
+        window.__sessionWsStarted = true;
         const ws = new WebSocket(buildSessionWsUrl(window.globalSessionToken));
+        window.__sessionWs = ws;
         ws.addEventListener('message', e => {
             try {
                 const data = JSON.parse(e.data);
@@ -144,7 +160,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } catch {}
         });
-        ws.addEventListener('close', () => setTimeout(setupSessionWs, 1000));
+        ws.addEventListener('close', () => {
+            if (window.__sessionWs === ws) {
+                window.__sessionWsStarted = false;
+                window.__sessionWs = null;
+                setTimeout(setupSessionWs, 1000);
+            }
+        });
     }
 
     if (bell) {
@@ -153,12 +175,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (panel.classList.contains('open')) loadInvites();
         });
     }
-
-    const canUseNotifications = Boolean(
-        bell &&
-        window.globalUserId &&
-        !String(window.globalUserId).startsWith('ghost_')
-    );
 
     if (canUseNotifications) {
         setupNotifWs();

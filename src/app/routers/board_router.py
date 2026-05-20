@@ -244,6 +244,11 @@ async def board_page(request: Request, board_id: str):
             if uid == str(session_user):
                 color = c
                 break
+    ranked_game = bool(
+        players
+        and str(players.get("white", "")).isdigit()
+        and str(players.get("black", "")).isdigit()
+    )
     return templates.TemplateResponse(
         "board.html",
         {
@@ -251,6 +256,7 @@ async def board_page(request: Request, board_id: str):
             "board_id": board_id,
             "player_color": color,
             "api_base": "/api",
+            "ranked_game": ranked_game,
         },
     )
 
@@ -476,28 +482,29 @@ async def api_make_move(request: Request, board_id: str, req: MoveRequest):
         if players and players.get("white", "").isdigit() and players.get("black", "").isdigit():
             white_id = int(players["white"])
             black_id = int(players["black"])
-            white_stats = await get_user_stats(white_id)
-            black_stats = await get_user_stats(black_id)
-            rating_change = {}
-            if status == "white_win":
-                rating_change["white"] = await record_game_result(white_id, "win", black_stats["elo"])
-                rating_change["black"] = await record_game_result(black_id, "loss", white_stats["elo"])
-            elif status == "black_win":
-                rating_change["white"] = await record_game_result(white_id, "loss", black_stats["elo"])
-                rating_change["black"] = await record_game_result(black_id, "win", white_stats["elo"])
-            else:
-                rating_change["white"] = await record_game_result(white_id, "draw", black_stats["elo"])
-                rating_change["black"] = await record_game_result(black_id, "draw", white_stats["elo"])
-            result_map = {
-                "white_win": {"white": "win", "black": "loss"},
-                "black_win": {"white": "loss", "black": "win"},
-                "draw": {"white": "draw", "black": "draw"},
-            }
-            await save_recorded_game(board_id, white_id, black_id, history_list, status, mode="multiplayer", ranked=True)
-            for color, uid in players.items():
-                await record_game(int(uid), "ranked", result_map[status][color], rating_change.get(color), game_id=board_id)
-            await check_rating_achievements(white_id)
-            await check_rating_achievements(black_id)
+            saved = await save_recorded_game(board_id, white_id, black_id, history_list, status, mode="multiplayer", ranked=True)
+            if saved:
+                white_stats = await get_user_stats(white_id)
+                black_stats = await get_user_stats(black_id)
+                rating_change = {}
+                if status == "white_win":
+                    rating_change["white"] = await record_game_result(white_id, "win", black_stats["elo"])
+                    rating_change["black"] = await record_game_result(black_id, "loss", white_stats["elo"])
+                elif status == "black_win":
+                    rating_change["white"] = await record_game_result(white_id, "loss", black_stats["elo"])
+                    rating_change["black"] = await record_game_result(black_id, "win", white_stats["elo"])
+                else:
+                    rating_change["white"] = await record_game_result(white_id, "draw", black_stats["elo"])
+                    rating_change["black"] = await record_game_result(black_id, "draw", white_stats["elo"])
+                result_map = {
+                    "white_win": {"white": "win", "black": "loss"},
+                    "black_win": {"white": "loss", "black": "win"},
+                    "draw": {"white": "draw", "black": "draw"},
+                }
+                for color, uid in players.items():
+                    await record_game(int(uid), "ranked", result_map[status][color], rating_change.get(color), game_id=board_id)
+                await check_rating_achievements(white_id)
+                await check_rating_achievements(black_id)
         await freeze_timers(board_id)
         timers_out = await get_current_timers(board_id, create=False)
         if timers_out and "last_ts" in timers_out:
@@ -547,24 +554,25 @@ async def api_resign(request: Request, board_id: str, action: PlayerAction):
     if players and players.get("white").isdigit() and players.get("black").isdigit():
         white_id = int(players.get("white"))
         black_id = int(players.get("black"))
-        white_stats = await get_user_stats(white_id)
-        black_stats = await get_user_stats(black_id)
-        rating_change = {}
-        if status == "white_win":
-            rating_change["white"] = await record_game_result(white_id, "win", black_stats["elo"])
-            rating_change["black"] = await record_game_result(black_id, "loss", white_stats["elo"])
-        else:
-            rating_change["white"] = await record_game_result(white_id, "loss", black_stats["elo"])
-            rating_change["black"] = await record_game_result(black_id, "win", white_stats["elo"])
-        result_map = {
-            "white_win": {"white": "win", "black": "loss"},
-            "black_win": {"white": "loss", "black": "win"},
-        }
-        await save_recorded_game(board_id, white_id, black_id, history, status, mode="multiplayer", ranked=True)
-        for color, uid in players.items():
-            await record_game(int(uid), "ranked", result_map[status][color], rating_change.get(color), game_id=board_id)
-        await check_rating_achievements(white_id)
-        await check_rating_achievements(black_id)
+        saved = await save_recorded_game(board_id, white_id, black_id, history, status, mode="multiplayer", ranked=True)
+        if saved:
+            white_stats = await get_user_stats(white_id)
+            black_stats = await get_user_stats(black_id)
+            rating_change = {}
+            if status == "white_win":
+                rating_change["white"] = await record_game_result(white_id, "win", black_stats["elo"])
+                rating_change["black"] = await record_game_result(black_id, "loss", white_stats["elo"])
+            else:
+                rating_change["white"] = await record_game_result(white_id, "loss", black_stats["elo"])
+                rating_change["black"] = await record_game_result(black_id, "win", white_stats["elo"])
+            result_map = {
+                "white_win": {"white": "win", "black": "loss"},
+                "black_win": {"white": "loss", "black": "win"},
+            }
+            for color, uid in players.items():
+                await record_game(int(uid), "ranked", result_map[status][color], rating_change.get(color), game_id=board_id)
+            await check_rating_achievements(white_id)
+            await check_rating_achievements(black_id)
     timers = await freeze_timers(board_id)
     await clear_draw_state(board_id)
     await expire_board(board_id, delay=600)
@@ -614,17 +622,18 @@ async def api_draw_response(request: Request, board_id: str, resp: DrawResponse)
         if players and players.get("white").isdigit() and players.get("black").isdigit():
             white_id = int(players.get("white"))
             black_id = int(players.get("black"))
-            white_stats = await get_user_stats(white_id)
-            black_stats = await get_user_stats(black_id)
-            rating_change = {
-                "white": await record_game_result(white_id, "draw", black_stats["elo"]),
-                "black": await record_game_result(black_id, "draw", white_stats["elo"]),
-            }
-            await save_recorded_game(board_id, white_id, black_id, history, "draw", mode="multiplayer", ranked=True)
-            for color, uid in players.items():
-                await record_game(int(uid), "ranked", "draw", rating_change.get(color), game_id=board_id)
-            await check_rating_achievements(white_id)
-            await check_rating_achievements(black_id)
+            saved = await save_recorded_game(board_id, white_id, black_id, history, "draw", mode="multiplayer", ranked=True)
+            if saved:
+                white_stats = await get_user_stats(white_id)
+                black_stats = await get_user_stats(black_id)
+                rating_change = {
+                    "white": await record_game_result(white_id, "draw", black_stats["elo"]),
+                    "black": await record_game_result(black_id, "draw", white_stats["elo"]),
+                }
+                for color, uid in players.items():
+                    await record_game(int(uid), "ranked", "draw", rating_change.get(color), game_id=board_id)
+                await check_rating_achievements(white_id)
+                await check_rating_achievements(black_id)
         timers = await freeze_timers(board_id)
         await clear_draw_state(board_id)
         await expire_board(board_id, delay=600)
@@ -665,24 +674,25 @@ async def api_check_timeout(board_id: str):
     if players and players.get("white").isdigit() and players.get("black").isdigit():
         white_id = int(players.get("white"))
         black_id = int(players.get("black"))
-        white_stats = await get_user_stats(white_id)
-        black_stats = await get_user_stats(black_id)
-        rating_change = {}
-        if status == "white_win":
-            rating_change["white"] = await record_game_result(white_id, "win", black_stats["elo"])
-            rating_change["black"] = await record_game_result(black_id, "loss", white_stats["elo"])
-        else:
-            rating_change["white"] = await record_game_result(white_id, "loss", black_stats["elo"])
-            rating_change["black"] = await record_game_result(black_id, "win", white_stats["elo"])
-        result_map = {
-            "white_win": {"white": "win", "black": "loss"},
-            "black_win": {"white": "loss", "black": "win"},
-        }
-        await save_recorded_game(board_id, white_id, black_id, history, status, mode="multiplayer", ranked=True)
-        for color, uid in players.items():
-            await record_game(int(uid), "ranked", result_map[status][color], rating_change.get(color), game_id=board_id)
-        await check_rating_achievements(white_id)
-        await check_rating_achievements(black_id)
+        saved = await save_recorded_game(board_id, white_id, black_id, history, status, mode="multiplayer", ranked=True)
+        if saved:
+            white_stats = await get_user_stats(white_id)
+            black_stats = await get_user_stats(black_id)
+            rating_change = {}
+            if status == "white_win":
+                rating_change["white"] = await record_game_result(white_id, "win", black_stats["elo"])
+                rating_change["black"] = await record_game_result(black_id, "loss", white_stats["elo"])
+            else:
+                rating_change["white"] = await record_game_result(white_id, "loss", black_stats["elo"])
+                rating_change["black"] = await record_game_result(black_id, "win", white_stats["elo"])
+            result_map = {
+                "white_win": {"white": "win", "black": "loss"},
+                "black_win": {"white": "loss", "black": "win"},
+            }
+            for color, uid in players.items():
+                await record_game(int(uid), "ranked", result_map[status][color], rating_change.get(color), game_id=board_id)
+            await check_rating_achievements(white_id)
+            await check_rating_achievements(black_id)
     timers = await freeze_timers(board_id)
     await clear_draw_state(board_id)
     await expire_board(board_id, delay=600)

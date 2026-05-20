@@ -45,8 +45,10 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     function setupSessionWs() {
-        if (!window.globalSessionToken) return;
+        if (!window.globalSessionToken || window.__sessionWsStarted) return;
+        window.__sessionWsStarted = true;
         const ws = new WebSocket(buildSessionWsUrl(window.globalSessionToken));
+        window.__sessionWs = ws;
         ws.addEventListener('message', e => {
             try {
                 const data = JSON.parse(e.data);
@@ -55,7 +57,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } catch {}
         });
-        ws.addEventListener('close', () => setTimeout(setupSessionWs, 1000));
+        ws.addEventListener('close', () => {
+            if (window.__sessionWs === ws) {
+                window.__sessionWsStarted = false;
+                window.__sessionWs = null;
+                setTimeout(setupSessionWs, 1000);
+            }
+        });
     }
 
     if (window.globalSessionToken) setupSessionWs();

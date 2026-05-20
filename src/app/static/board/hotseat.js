@@ -40,6 +40,7 @@ let viewedMoveIndex = 0;
 let isPerformingAutoMove = false;
 let pendingMove = false;
 let animatingBoard = false;
+let timeoutCheckPending = false;
 let lastHistoryLen = 0;
 let locallyAnimatedMove = null;
 let updateQueue = Promise.resolve();
@@ -331,8 +332,10 @@ function isFinishedUpdate(data) {
 }
 
 function setGameActionsVisible(visible) {
-    const item = document.getElementById('menuEnd');
-    if (item) item.hidden = !visible;
+    ['menuEnd', 'menuDraw'].forEach(id => {
+        const item = document.getElementById(id);
+        if (item) item.hidden = !visible;
+    });
 }
 
 async function handleUpdate(data) {
@@ -657,6 +660,8 @@ function startTimers() {
 }
 
 async function checkTimeout() {
+    if (timeoutCheckPending || gameOver) return;
+    timeoutCheckPending = true;
     try {
         const res = await fetch(`/api/hotseat/check_timeout/${boardId}`, { method: 'POST' });
         if (res.ok) {
@@ -665,7 +670,10 @@ async function checkTimeout() {
                 await queueHandleUpdate(data);
             }
         }
-    } catch (e) {}
+    } catch (e) {
+    } finally {
+        timeoutCheckPending = false;
+    }
 }
 
 function buildWsUrl() {
@@ -725,17 +733,28 @@ document.getElementById('menuHome').addEventListener('click', () => {
 });
 
 const menuEnd = document.getElementById('menuEnd');
+const menuDraw = document.getElementById('menuDraw');
 
 menuEnd.addEventListener('click', async () => {
     if (gameOver) return;
     rightSidebar.classList.remove('open');
-    gameOver = true;
     setGameActionsVisible(false);
     stopTimers();
     const res = await fetch(`/api/hotseat/end/${boardId}`, { method: 'POST' });
     if (res.ok) {
         const data = await res.json();
-        resultText.textContent = 'Игра окончена';
+        await queueHandleUpdate(data);
+    }
+});
+
+menuDraw.addEventListener('click', async () => {
+    if (gameOver) return;
+    rightSidebar.classList.remove('open');
+    setGameActionsVisible(false);
+    stopTimers();
+    const res = await fetch(`/api/hotseat/draw/${boardId}`, { method: 'POST' });
+    if (res.ok) {
+        const data = await res.json();
         await queueHandleUpdate(data);
     }
 });

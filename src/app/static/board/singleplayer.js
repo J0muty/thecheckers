@@ -42,6 +42,7 @@ let isPerformingAutoMove = false;
 let pendingMove = false;
 let pendingBotMove = false;
 let animatingBoard = false;
+let timeoutCheckPending = false;
 let lastHistoryLen = 0;
 let locallyAnimatedMove = null;
 let updateQueue = Promise.resolve();
@@ -699,6 +700,8 @@ function startTimers() {
 }
 
 async function checkTimeout() {
+    if (timeoutCheckPending || gameOver) return;
+    timeoutCheckPending = true;
     try {
         const res = await fetch(`/api/single/check_timeout/${boardId}`, { method: 'POST' });
         if (res.ok) {
@@ -709,6 +712,8 @@ async function checkTimeout() {
         }
     } catch (e) {
         console.error('timeout check failed', e);
+    } finally {
+        timeoutCheckPending = false;
     }
 }
 
