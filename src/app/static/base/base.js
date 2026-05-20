@@ -217,7 +217,4 @@ document.addEventListener('DOMContentLoaded', () => {
         if (event.key === 'Escape') closePanel();
     });
 });
-const notifFixScript = document.currentScript
-    ? new URL('notif-fix.js', document.currentScript.src).href
-    : '/static/base/notif-fix.js';
-import(notifFixScript).catch(() => {});
+import("/static/base/notif-fix.js").catch(() => {});
