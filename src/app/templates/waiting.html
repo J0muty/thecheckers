@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Поиск соперника</title>
+    <link rel="icon" href="/static/base/favicon.svg" type="image/svg+xml">
 
     <script>
         if (localStorage.theme === 'dark') {
@@ -11,10 +12,15 @@
         }
     </script>
 
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="/static/waiting/waiting.css">
     <link rel="stylesheet" href="/static/base/toast.css">
+    <link rel="stylesheet" href="/static/base/theme.css">
 </head>
 <body>
+    <button id="theme-toggle" class="theme-toggle floating-theme" type="button" aria-label="Переключить тему">
+        <i class="fa-solid fa-moon" id="theme-icon"></i>
+    </button>
 
     <div class="waiting-container">
         <div class="spinner"></div>
@@ -30,6 +36,7 @@
 
     <script src="/static/waiting/waiting.js"></script>
     <script src="/static/base/toast.js"></script>
+    <script src="/static/base/theme.js"></script>
     <script src="/static/base/session_ws.js"></script>
 </body>
 </html>

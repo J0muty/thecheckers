@@ -8,22 +8,28 @@ document.addEventListener('DOMContentLoaded', () => {
         toggleBtn.addEventListener('click', () => sidebar.classList.toggle('open'));
     }
 
-    if (localStorage.theme === 'dark') {
-        document.documentElement.classList.add('dark-mode');
-        if (themeIcon) themeIcon.classList.replace('fa-moon', 'fa-sun');
-    } else {
-        document.documentElement.classList.remove('dark-mode');
-        if (themeIcon) themeIcon.classList.replace('fa-sun', 'fa-moon');
-    }
+    const applyTheme = theme => {
+        document.documentElement.classList.toggle('dark-mode', theme === 'dark');
+        localStorage.theme = theme;
+        if (themeIcon) {
+            themeIcon.classList.toggle('fa-sun', theme === 'dark');
+            themeIcon.classList.toggle('fa-moon', theme !== 'dark');
+        }
+        if (themeToggle) {
+            themeToggle.setAttribute('aria-pressed', theme === 'dark' ? 'true' : 'false');
+            themeToggle.setAttribute('aria-label', theme === 'dark' ? 'Включить светлую тему' : 'Включить темную тему');
+            themeToggle.title = theme === 'dark' ? 'Светлая тема' : 'Темная тема';
+        }
+    };
+
+    const initialTheme = localStorage.theme === 'dark' || localStorage.theme === 'light'
+        ? localStorage.theme
+        : (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    applyTheme(initialTheme);
 
     if (themeToggle) {
         themeToggle.addEventListener('click', () => {
-            const isDark = document.documentElement.classList.toggle('dark-mode');
-            localStorage.theme = isDark ? 'dark' : 'light';
-            if (themeIcon) {
-                themeIcon.classList.toggle('fa-moon');
-                themeIcon.classList.toggle('fa-sun');
-            }
+            applyTheme(document.documentElement.classList.contains('dark-mode') ? 'light' : 'dark');
         });
     }
 
@@ -39,8 +45,10 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     function setupSessionWs() {
-        if (!window.globalSessionToken) return;
+        if (!window.globalSessionToken || window.__sessionWsStarted) return;
+        window.__sessionWsStarted = true;
         const ws = new WebSocket(buildSessionWsUrl(window.globalSessionToken));
+        window.__sessionWs = ws;
         ws.addEventListener('message', e => {
             try {
                 const data = JSON.parse(e.data);
@@ -49,7 +57,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } catch {}
         });
-        ws.addEventListener('close', () => setTimeout(setupSessionWs, 1000));
+        ws.addEventListener('close', () => {
+            if (window.__sessionWs === ws) {
+                window.__sessionWsStarted = false;
+                window.__sessionWs = null;
+                setTimeout(setupSessionWs, 1000);
+            }
+        });
     }
 
     if (window.globalSessionToken) setupSessionWs();

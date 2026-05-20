@@ -1,9 +1,34 @@
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from typing import Dict, List
+from typing import Any, Dict, List
 import json
 
-from src.base.redis import save_chat_message, save_lobby_chat_message
+from src.app.game.game_logic import piece_capture_moves
 from src.base.postgres import get_user_login
+from src.base.redis import (
+    board_exists as multi_board_exists,
+    get_board_players,
+    get_board_state as get_multi_board_state,
+    get_chain_state as get_multi_chain_state,
+    get_current_timers as get_multi_timers,
+    get_history as get_multi_history,
+    save_chat_message,
+    save_lobby_chat_message,
+)
+from src.base.hotseat_redis import (
+    game_exists as hotseat_exists,
+    get_board_state as get_hotseat_board_state,
+    get_chain_state as get_hotseat_chain_state,
+    get_current_timers as get_hotseat_timers,
+    get_history as get_hotseat_history,
+)
+from src.base.single_redis import (
+    game_exists as single_exists,
+    get_board_state as get_single_board_state,
+    get_chain_state as get_single_chain_state,
+    get_current_timers as get_single_timers,
+    get_history as get_single_history,
+)
+from src.app.utils.guest import get_display_name
 
 ws_router = APIRouter()
 
@@ -44,9 +69,111 @@ session_update_manager = ConnectionManager()
 session_kick_manager = ConnectionManager()
 
 
+def _public_timers(timers: dict[str, Any] | None) -> dict[str, Any] | None:
+    if not timers:
+        return None
+    return {key: value for key, value in timers.items() if key != "last_ts"}
+
+
+def _blocked_positions(chain_state: dict | None) -> list[tuple[int, int]]:
+    if not chain_state:
+        return []
+    return [tuple(pos) for pos in chain_state.get("captured_positions", [])]
+
+
+def _forced_piece(chain_state: dict | None) -> tuple[int, int] | None:
+    if not chain_state or "piece" not in chain_state:
+        return None
+    piece = chain_state.get("piece")
+    return tuple(piece) if piece else None
+
+
+def _forced_payload(board, chain_state: dict | None):
+    forced_piece = _forced_piece(chain_state)
+    if forced_piece is None or not chain_state:
+        return None, []
+    moves = piece_capture_moves(
+        board,
+        forced_piece,
+        chain_state["player"],
+        blocked_positions=_blocked_positions(chain_state),
+    )
+    return forced_piece, moves
+
+
+async def _send_initial_single_state(websocket: WebSocket, game_id: str) -> None:
+    if not await single_exists(game_id):
+        return
+    board = await get_single_board_state(game_id, create=False)
+    timers = await get_single_timers(game_id, create=False)
+    if board is None or timers is None:
+        return
+    history = await get_single_history(game_id)
+    forced_piece, forced_moves = _forced_payload(
+        board,
+        await get_single_chain_state(game_id),
+    )
+    await websocket.send_text(json.dumps({
+        "board": board,
+        "status": None,
+        "history": history,
+        "timers": _public_timers(timers),
+        "forced_piece": forced_piece,
+        "forced_moves": forced_moves,
+    }))
+
+
+async def _send_initial_board_state(websocket: WebSocket, board_id: str) -> None:
+    if await multi_board_exists(board_id):
+        board = await get_multi_board_state(board_id, create=False)
+        timers = await get_multi_timers(board_id, create=False)
+        if board is None or timers is None:
+            return
+        history = await get_multi_history(board_id)
+        players_raw = await get_board_players(board_id) or {}
+        players = {
+            color: await get_display_name(uid)
+            for color, uid in players_raw.items()
+        }
+        forced_piece, forced_moves = _forced_payload(
+            board,
+            await get_multi_chain_state(board_id),
+        )
+        await websocket.send_text(json.dumps({
+            "board": board,
+            "status": None,
+            "history": history,
+            "timers": _public_timers(timers),
+            "players": players,
+            "forced_piece": forced_piece,
+            "forced_moves": forced_moves,
+        }))
+        return
+
+    if await hotseat_exists(board_id):
+        board = await get_hotseat_board_state(board_id, create=False)
+        timers = await get_hotseat_timers(board_id, create=False)
+        if board is None or timers is None:
+            return
+        history = await get_hotseat_history(board_id)
+        forced_piece, forced_moves = _forced_payload(
+            board,
+            await get_hotseat_chain_state(board_id),
+        )
+        await websocket.send_text(json.dumps({
+            "board": board,
+            "status": None,
+            "history": history,
+            "timers": _public_timers(timers),
+            "forced_piece": forced_piece,
+            "forced_moves": forced_moves,
+        }))
+
+
 @ws_router.websocket("/ws/single/{game_id}")
 async def websocket_single_board(websocket: WebSocket, game_id: str):
     await single_board_manager.connect(game_id, websocket)
+    await _send_initial_single_state(websocket, game_id)
     try:
         while True:
             await websocket.receive_text()
@@ -57,6 +184,7 @@ async def websocket_single_board(websocket: WebSocket, game_id: str):
 @ws_router.websocket("/ws/board/{board_id}")
 async def websocket_board(websocket: WebSocket, board_id: str):
     await board_manager.connect(board_id, websocket)
+    await _send_initial_board_state(websocket, board_id)
     try:
         while True:
             await websocket.receive_text()

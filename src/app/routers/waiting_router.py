@@ -6,17 +6,28 @@ from src.base.redis import (
     check_waiting,
     cancel_waiting,
     get_board_players,
+    get_current_timers as get_board_timers,
     get_user_hotseat,
     get_waiting_time,
     waiting_timed_out,
 )
 from src.base.lobby_redis import get_user_lobby
-from src.base.single_redis import get_user_game
+from src.base.hotseat_redis import get_current_timers as get_hotseat_timers
+from src.base.single_redis import (
+    get_current_timers as get_single_timers,
+    get_user_game,
+)
 from src.app.routers.single_router import game_colors
 from src.app.routers.ws_router import waiting_manager
 import json
 
 waiting_router = APIRouter()
+
+
+def _public_timers(timers):
+    if not timers:
+        return None
+    return {key: value for key, value in timers.items() if key != "last_ts"}
 
 @waiting_router.get("/waiting", response_class=HTMLResponse, name="waiting")
 async def waiting(request: Request):
@@ -70,6 +81,9 @@ async def api_user_status(request: Request):
     single_color = game_colors.get(single_game, "white") if single_game else None
     hotseat_id = await get_user_hotseat(str(user_id))
     lobby_id = await get_user_lobby(str(user_id))
+    board_timers = await get_board_timers(board_id, create=False) if board_id else None
+    single_timers = await get_single_timers(single_game, create=False) if single_game else None
+    hotseat_timers = await get_hotseat_timers(hotseat_id, create=False) if hotseat_id else None
     return JSONResponse({
         "board_id": board_id,
         "color": color,
@@ -79,6 +93,9 @@ async def api_user_status(request: Request):
         "single_color": single_color,
         "hotseat_id": hotseat_id,
         "lobby_id": lobby_id,
+        "board_timers": _public_timers(board_timers),
+        "single_timers": _public_timers(single_timers),
+        "hotseat_timers": _public_timers(hotseat_timers),
     })
 
 @waiting_router.post("/api/cancel_game")

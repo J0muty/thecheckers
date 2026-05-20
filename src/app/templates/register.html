@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Регистрация</title>
+    <link rel="icon" href="/static/base/favicon.svg" type="image/svg+xml">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <script>
         if (localStorage.theme === 'dark') {
@@ -12,8 +13,12 @@
     <link rel="stylesheet" href="/static/register/register.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="/static/base/toast.css">
+    <link rel="stylesheet" href="/static/base/theme.css">
 </head>
 <body>
+    <button id="theme-toggle" class="theme-toggle floating-theme" type="button" aria-label="Переключить тему">
+        <i class="fa-solid fa-moon" id="theme-icon"></i>
+    </button>
     <div class="page">
         <main class="container">
             <a href="/" class="back-arrow">
@@ -55,6 +60,7 @@
     </div>
     <script src="/static/base/toast.js"></script>
     <script src="/static/register/register.js"></script>
+    <script src="/static/base/theme.js"></script>
     <script>
         window.globalSessionToken = "{{ request.session.session_token or '' }}";
     </script>

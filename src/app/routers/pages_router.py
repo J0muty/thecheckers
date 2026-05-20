@@ -1,5 +1,5 @@
 from fastapi import Request, APIRouter
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from src.settings.settings import templates
 from src.app.utils.guest import is_guest
 
@@ -19,3 +19,8 @@ async def home(request: Request):
             "flash": flash,
         },
     )
+
+
+@pages_router.get("/favicon.ico")
+async def favicon():
+    return RedirectResponse("/static/base/favicon.svg")

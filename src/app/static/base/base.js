@@ -16,20 +16,37 @@ document.addEventListener('DOMContentLoaded', () => {
     const setTheme = t => {
         if (t === 'dark') {
             root.classList.add('dark-mode');
-            if (icon) icon.classList.replace('fa-moon', 'fa-sun');
         } else {
             root.classList.remove('dark-mode');
-            if (icon) icon.classList.replace('fa-sun', 'fa-moon');
+        }
+        if (icon) {
+            icon.classList.toggle('fa-sun', t === 'dark');
+            icon.classList.toggle('fa-moon', t !== 'dark');
+        }
+        const toggle = document.getElementById('theme-toggle');
+        if (toggle) {
+            toggle.setAttribute('aria-pressed', t === 'dark' ? 'true' : 'false');
+            toggle.setAttribute('aria-label', t === 'dark' ? 'Включить светлую тему' : 'Включить темную тему');
+            toggle.title = t === 'dark' ? 'Светлая тема' : 'Темная тема';
         }
         localStorage.theme = t;
     };
-    setTheme(localStorage.theme === 'dark' ? 'dark' : 'light');
+    const initialTheme = localStorage.theme === 'dark' || localStorage.theme === 'light'
+        ? localStorage.theme
+        : (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    setTheme(initialTheme);
     const toggle = document.getElementById('theme-toggle');
     if (toggle) toggle.addEventListener('click', () => setTheme(root.classList.contains('dark-mode') ? 'light' : 'dark'));
 
     const bell = document.getElementById('notifBell');
     const panel = document.getElementById('notifPanel');
     const countEl = document.getElementById('notifCount');
+    const canUseNotifications = Boolean(
+        bell &&
+        panel &&
+        window.globalUserId &&
+        !String(window.globalUserId).startsWith('ghost_')
+    );
 
     const buildNotifWsUrl = id => {
         const proto = location.protocol === 'https:' ? 'wss' : 'ws';
@@ -97,8 +114,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function setupNotifWs() {
-        if (!window.globalUserId) return;
+        if (!canUseNotifications || window.__notifWsStarted) return;
+        window.__notifWsStarted = true;
         const ws = new WebSocket(buildNotifWsUrl(window.globalUserId));
+        window.__notifWs = ws;
         ws.addEventListener('message', e => {
             try {
                 const data = JSON.parse(e.data);
@@ -114,7 +133,13 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch {}
             loadInvites();
         });
-        ws.addEventListener('close', () => setTimeout(setupNotifWs, 1000));
+        ws.addEventListener('close', () => {
+            if (window.__notifWs === ws) {
+                window.__notifWsStarted = false;
+                window.__notifWs = null;
+                setTimeout(setupNotifWs, 1000);
+            }
+        });
     }
 
     const buildSessionWsUrl = token => {
@@ -123,8 +148,10 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     function setupSessionWs() {
-        if (!window.globalSessionToken) return;
+        if (!window.globalSessionToken || window.__sessionWsStarted) return;
+        window.__sessionWsStarted = true;
         const ws = new WebSocket(buildSessionWsUrl(window.globalSessionToken));
+        window.__sessionWs = ws;
         ws.addEventListener('message', e => {
             try {
                 const data = JSON.parse(e.data);
@@ -133,7 +160,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } catch {}
         });
-        ws.addEventListener('close', () => setTimeout(setupSessionWs, 1000));
+        ws.addEventListener('close', () => {
+            if (window.__sessionWs === ws) {
+                window.__sessionWsStarted = false;
+                window.__sessionWs = null;
+                setTimeout(setupSessionWs, 1000);
+            }
+        });
     }
 
     if (bell) {
@@ -143,9 +176,45 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    if (window.globalUserId) {
+    if (canUseNotifications) {
         setupNotifWs();
         loadInvites();
     }
     if (window.globalSessionToken) setupSessionWs();
 });
+
+/* codex-responsive-polish-2026-05-18 */
+document.addEventListener('DOMContentLoaded', () => {
+    const bell = document.getElementById('notifBell');
+    const panel = document.getElementById('notifPanel');
+    if (!bell || !panel || bell.dataset.codexNotifBound === '1') return;
+    bell.dataset.codexNotifBound = '1';
+    bell.setAttribute('role', 'button');
+    bell.setAttribute('tabindex', '0');
+    bell.setAttribute('aria-label', 'Оповещения');
+
+    const openPanel = () => {
+        panel.classList.add('open');
+        bell.setAttribute('aria-expanded', 'true');
+    };
+    const closePanel = () => {
+        panel.classList.remove('open');
+        bell.setAttribute('aria-expanded', 'false');
+    };
+    const togglePanel = event => {
+        event.preventDefault();
+        event.stopPropagation();
+        panel.classList.contains('open') ? closePanel() : openPanel();
+    };
+
+    bell.addEventListener('click', togglePanel, true);
+    bell.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === ' ') togglePanel(event);
+    });
+    panel.addEventListener('click', event => event.stopPropagation());
+    document.addEventListener('click', closePanel);
+    document.addEventListener('keydown', event => {
+        if (event.key === 'Escape') closePanel();
+    });
+});
+import("/static/base/notif-fix.js").catch(() => {});

@@ -90,8 +90,11 @@ BOT_ACHIEVEMENTS = [
     {"code": "bot_medium_10", "title": "Средний ×10", "desc": "Победите бота на среднем уровне 10 раз", "icon": "fa-robot", "threshold": 10, "level": "medium"},
     {"code": "bot_medium_50", "title": "Средний ×50", "desc": "Победите бота на среднем уровне 50 раз", "icon": "fa-robot", "threshold": 50, "level": "medium"},
     {"code": "bot_hard_1", "title": "Железо повержено", "desc": "Победите бота на сложном уровне", "icon": "fa-robot", "threshold": 1, "level": "hard"},
-    {"code": "bot_hard_10", "title": "Хардкор ×10", "desc": "Победите бота на сложном уровне 10 раз", "icon": "fa-robot", "threshold": 10, "level": "hard"},
-    {"code": "bot_hard_50", "title": "Хардкор ×50", "desc": "Победите бота на сложном уровне 50 раз", "icon": "fa-robot", "threshold": 50, "level": "hard"},
+    {"code": "bot_hard_10", "title": "Сложно ×10", "desc": "Победите бота на сложном уровне 10 раз", "icon": "fa-robot", "threshold": 10, "level": "hard"},
+    {"code": "bot_hard_50", "title": "Сложно ×50", "desc": "Победите бота на сложном уровне 50 раз", "icon": "fa-robot", "threshold": 50, "level": "hard"},
+    {"code": "bot_hardcore_1", "title": "Хардкор вскрыт", "desc": "Победите бота на хардкорном уровне", "icon": "fa-brain", "threshold": 1, "level": "hardcore"},
+    {"code": "bot_hardcore_10", "title": "Хардкор ×10", "desc": "Победите бота на хардкорном уровне 10 раз", "icon": "fa-brain", "threshold": 10, "level": "hardcore"},
+    {"code": "bot_hardcore_50", "title": "Хардкор ×50", "desc": "Победите бота на хардкорном уровне 50 раз", "icon": "fa-brain", "threshold": 50, "level": "hardcore"},
     {"code": "lose_to_easy_bot", "title": "Проиграл боту? Серьёзно?", "desc": "Проиграйте боту на лёгком уровне", "icon": "fa-face-grin-squint"},
 ]
 
