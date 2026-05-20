@@ -14,7 +14,7 @@
     <link rel="stylesheet" href="/static/base/base.css">
     <link rel="stylesheet" href="/static/base/toast.css">
     {% block extra_css %}{% endblock %}
-    <link rel="stylesheet" href="/static/base/theme.css">
+    <link rel="stylesheet" href="/static/base/theme.css?v=20260520-targeted6">
     <script>
         window.globalUserId = "{{ request.session.get('user_id','')|string }}";
         window.globalSessionToken = "{{ request.session.get('session_token','')|string }}";

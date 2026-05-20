@@ -393,7 +393,9 @@ async def api_hotseat_check_timeout(board_id: str):
     board = await get_board_state(board_id, create=False)
     timers = await get_current_timers(board_id, create=False)
     history = await get_history(board_id)
-    active = timers["turn"]
+    active = timers.get("turn")
+    if active not in ("white", "black"):
+        return MoveResult(board=board, status=None, history=history, timers=timers)
     status = None
     if timers[active] <= 0:
         status = "black_win" if active == "white" else "white_win"

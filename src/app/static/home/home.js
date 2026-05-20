@@ -324,6 +324,9 @@ document.addEventListener('DOMContentLoaded', () => {
         o.addEventListener('click', e => {
             if (e.target === o) o.classList.remove('active');
         });
+        o.querySelectorAll('[data-close-modal]').forEach(btn => {
+            btn.addEventListener('click', () => o.classList.remove('active'));
+        });
     });
 
     document.addEventListener('keydown', e => {

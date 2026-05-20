@@ -30,10 +30,11 @@ async def replay_page(request: Request, game_id: str):
         raise HTTPException(status_code=404)
     color = ""
     user_id = request.session.get("user_id")
-    if user_id:
-        if data.get("white_id") == int(user_id):
+    if user_id and str(user_id).isdigit():
+        numeric_user_id = int(user_id)
+        if data.get("white_id") == numeric_user_id:
             color = "white"
-        elif data.get("black_id") == int(user_id):
+        elif data.get("black_id") == numeric_user_id:
             color = "black"
     return templates.TemplateResponse(
         "replay.html",

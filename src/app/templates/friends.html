@@ -34,9 +34,9 @@
                 <i class="fa-solid fa-ellipsis-vertical"></i>
             </button>
             <div class="dropdown">
-                <div class="dropdown-item msg"><i class="fa-solid fa-comment-dots"></i> Написать</div>
-                <div class="dropdown-item remove"><i class="fa-solid fa-trash"></i> Удалить</div>
-                <div class="dropdown-item block"><i class="fa-solid fa-ban"></i> Заблокировать</div>
+                <div class="dropdown-item msg"><i class="fa-solid fa-comment-dots"></i><span class="dropdown-label" data-short="Чат">Написать</span></div>
+                <div class="dropdown-item remove"><i class="fa-solid fa-trash"></i><span class="dropdown-label" data-short="Удалить">Удалить</span></div>
+                <div class="dropdown-item block"><i class="fa-solid fa-ban"></i><span class="dropdown-label" data-short="Блок">Заблокировать</span></div>
             </div>
         </div>
     </li>
@@ -69,7 +69,7 @@
 {% block extra_js %}
 <script>const userId="{{ user_id }}";</script>
 <script src="/static/profile/profile.js"></script>
-<script src="/static/friends/friends.js"></script>
+<script src="/static/friends/friends.js?v=20260520-targeted6"></script>
 <script type="module">
 import { initChat } from '/static/chat/chat.js';
 window.chatModule=initChat(document.getElementById('chat-panel'),userId);

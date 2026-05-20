@@ -52,6 +52,9 @@
     </div>
     <div id="singleModal" class="modal-overlay" role="dialog" aria-modal="true">
         <div class="modal fancy-modal" tabindex="-1">
+            <button class="modal-close-btn" type="button" aria-label="Закрыть окно" data-close-modal>
+                <i class="fa-solid fa-xmark"></i>
+            </button>
             <h2 class="modal-title">Выберите сложность и цвет</h2>
             <form class="modal-options" id="singleForm">
                 <fieldset class="radio-group">
@@ -81,6 +84,9 @@
     </div>
     <div id="netModal" class="modal-overlay" role="dialog" aria-modal="true">
         <div class="modal fancy-modal" tabindex="-1">
+            <button class="modal-close-btn" type="button" aria-label="Закрыть окно" data-close-modal>
+                <i class="fa-solid fa-xmark"></i>
+            </button>
             <h2 class="modal-title">Выберите режим</h2>
             <div class="modal-menu">
                 <button id="netSearchBtn" class="btn" type="button">Поиск</button>
@@ -99,5 +105,5 @@
         window.globalSessionToken = "{{ request.session.session_token or '' }}";
     </script>
     <script src="/static/base/session_ws.js"></script>
-    <script src="/static/home/home.js"></script>
+    <script src="/static/home/home.js?v=20260520-targeted6"></script>
 {% endblock %}
