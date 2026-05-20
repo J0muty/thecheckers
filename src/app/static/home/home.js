@@ -39,6 +39,8 @@ let currentSingleId = null;
 let waitingWs = null;
 let boardWs = null;
 let currentBoardId = null;
+let currentNetTimerColor = null;
+let currentSingleTimerColor = null;
 
 function buildWaitingWsUrl() {
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
@@ -61,6 +63,46 @@ function formatTime(sec) {
     return `${m}:${s}`;
 }
 
+function stopNetClock() {
+    clearInterval(netInterval);
+    netInterval = null;
+}
+
+function stopSingleClock() {
+    clearInterval(singleInterval);
+    singleInterval = null;
+}
+
+function activeTimerKey(timers, displayColor) {
+    if (displayColor === 'white' || displayColor === 'black') return displayColor;
+    return timers?.turn === 'black' ? 'black' : 'white';
+}
+
+function timerSeconds(timers, displayColor, startedAt) {
+    if (!timers) return 0;
+    const key = activeTimerKey(timers, displayColor);
+    let value = Number(timers[key] ?? 0);
+    if (timers.turn === key) {
+        value -= (Date.now() - startedAt) / 1000;
+    }
+    return Math.max(0, value);
+}
+
+function startClock(kind, timerEl, timers, displayColor) {
+    const startedAt = Date.now();
+    const tick = () => {
+        timerEl.textContent = formatTime(timerSeconds(timers, displayColor, startedAt));
+    };
+    const stopClock = kind === 'net' ? stopNetClock : stopSingleClock;
+    stopClock();
+    tick();
+    if (timers?.turn === 'white' || timers?.turn === 'black') {
+        const interval = setInterval(tick, 1000);
+        if (kind === 'net') netInterval = interval;
+        else singleInterval = interval;
+    }
+}
+
 function setupWaitingWs() {
     if (waitingWs) return;
     waitingWs = new WebSocket(buildWaitingWsUrl());
@@ -71,13 +113,15 @@ function setupWaitingWs() {
     });
 }
 
-function setupBoardWs(id) {
+function setupBoardWs(id, displayColor = null) {
+    currentNetTimerColor = displayColor;
     if (boardWs && currentBoardId === id) return;
     if (boardWs) boardWs.close();
     currentBoardId = id;
     boardWs = new WebSocket(buildBoardWsUrl(id));
     boardWs.addEventListener('message', e => {
         const d = JSON.parse(e.data);
+        if (d.timers) startClock('net', netTimer, d.timers, currentNetTimerColor);
         if (d.status) updateStatus();
     });
     boardWs.addEventListener('close', () => {
@@ -86,13 +130,15 @@ function setupBoardWs(id) {
     });
 }
 
-function setupSingleWs(id) {
+function setupSingleWs(id, displayColor = null) {
+    currentSingleTimerColor = displayColor;
     if (singleWs && currentSingleId === id) return;
     if (singleWs) singleWs.close();
     currentSingleId = id;
     singleWs = new WebSocket(buildSingleWsUrl(id));
     singleWs.addEventListener('message', e => {
         const d = JSON.parse(e.data);
+        if (d.timers) startClock('single', singleTimer, d.timers, currentSingleTimerColor);
         if (d.status) updateStatus();
     });
     singleWs.addEventListener('close', () => {
@@ -102,8 +148,8 @@ function setupSingleWs(id) {
 }
 
 function clearIntervals() {
-    clearInterval(netInterval);
-    clearInterval(singleInterval);
+    stopNetClock();
+    stopSingleClock();
     clearInterval(waitInterval);
 }
 
@@ -116,29 +162,18 @@ async function updateStatus() {
         visible = true;
         netBox.style.display = 'flex';
         netTitle.textContent = 'HOTSEAT - режим';
-        setupBoardWs(data.hotseat_id);
+        setupBoardWs(data.hotseat_id, null);
         netReturn.onclick = () => window.location.href = `/hotseat/${data.hotseat_id}`;
         netLeave.onclick = async () => {
             await fetch(`/api/hotseat/end/${data.hotseat_id}`, {method: 'POST'});
             updateStatus();
         };
-        clearInterval(netInterval);
-        netInterval = setInterval(async () => {
-            const tRes = await fetch(`/api/hotseat/timers/${data.hotseat_id}`);
-            if (!tRes.ok) return;
-            const t = await tRes.json();
-            netTimer.textContent = formatTime(t[t.turn]);
-        }, 1000);
-        const tRes = await fetch(`/api/hotseat/timers/${data.hotseat_id}`);
-        if (tRes.ok) {
-            const t = await tRes.json();
-            netTimer.textContent = formatTime(t[t.turn]);
-        }
+        startClock('net', netTimer, data.hotseat_timers, null);
     } else if (data.board_id) {
         visible = true;
         netBox.style.display = 'flex';
         netTitle.textContent = 'Сетевая игра';
-        setupBoardWs(data.board_id);
+        setupBoardWs(data.board_id, data.color);
         netReturn.onclick = () => window.location.href = `/board/${data.board_id}`;
         netLeave.onclick = () => {
             leaveModal.classList.add('active');
@@ -153,30 +188,20 @@ async function updateStatus() {
             };
             leaveNo.onclick = () => leaveModal.classList.remove('active');
         };
-        clearInterval(netInterval);
-        netInterval = setInterval(async () => {
-            const tRes = await fetch(`/api/timers/${data.board_id}`);
-            if (!tRes.ok) return;
-            const t = await tRes.json();
-            netTimer.textContent = formatTime(t[data.color]);
-        }, 1000);
-        const tRes = await fetch(`/api/timers/${data.board_id}`);
-        if (tRes.ok) {
-            const t = await tRes.json();
-            netTimer.textContent = formatTime(t[data.color]);
-        }
+        startClock('net', netTimer, data.board_timers, data.color);
     } else {
         netBox.style.display = 'none';
         netTitle.textContent = 'Сетевая игра';
-        clearInterval(netInterval);
+        stopNetClock();
         if (boardWs) { boardWs.close(); boardWs = null; }
         currentBoardId = null;
+        currentNetTimerColor = null;
     }
 
     if (data.single_game_id) {
         visible = true;
         singleBox.style.display = 'flex';
-        setupSingleWs(data.single_game_id);
+        setupSingleWs(data.single_game_id, data.single_color);
         singleReturn.onclick = () => window.location.href = `/singleplayer/${data.single_game_id}`;
         singleLeave.onclick = () => {
             leaveModal.classList.add('active');
@@ -191,23 +216,13 @@ async function updateStatus() {
             };
             leaveNo.onclick = () => leaveModal.classList.remove('active');
         };
-        clearInterval(singleInterval);
-        singleInterval = setInterval(async () => {
-            const tRes = await fetch(`/api/single/timers/${data.single_game_id}`);
-            if (!tRes.ok) return;
-            const t = await tRes.json();
-            singleTimer.textContent = formatTime(t[data.single_color]);
-        }, 1000);
-        const tRes = await fetch(`/api/single/timers/${data.single_game_id}`);
-        if (tRes.ok) {
-            const t = await tRes.json();
-            singleTimer.textContent = formatTime(t[data.single_color]);
-        }
+        startClock('single', singleTimer, data.single_timers, data.single_color);
     } else {
         singleBox.style.display = 'none';
-        clearInterval(singleInterval);
+        stopSingleClock();
         if (singleWs) { singleWs.close(); singleWs = null; }
         currentSingleId = null;
+        currentSingleTimerColor = null;
     }
 
     if (data.waiting_since) {
@@ -268,13 +283,31 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 const diff = document.querySelector('input[name="difficulty"]:checked').value;
                 const color = document.querySelector('input[name="spcolor"]:checked').value;
-                const res = await fetch('/api/single/start', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ difficulty: diff, color })
-                });
-                const data = await res.json();
-                window.location.href = `/singleplayer/${data.game_id}`;
+                startSingleBtn.disabled = true;
+                try {
+                    const res = await fetch('/api/single/start', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ difficulty: diff, color })
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data.game_id) {
+                            window.location.href = `/singleplayer/${data.game_id}`;
+                            return;
+                        }
+                    }
+                    if (res.status === 401 || res.status === 403) {
+                        const params = new URLSearchParams({ difficulty: diff, color });
+                        window.location.href = `/singleplayer?${params.toString()}`;
+                        return;
+                    }
+                    showNotification('Не удалось начать одиночную игру', 'error');
+                } catch {
+                    showNotification('Сервер недоступен. Попробуйте ещё раз', 'error');
+                } finally {
+                    startSingleBtn.disabled = false;
+                }
             });
         }
     }
@@ -305,6 +338,9 @@ document.addEventListener('DOMContentLoaded', () => {
     [leaveModal, singleModal, netModal].filter(Boolean).forEach(o => {
         o.addEventListener('click', e => {
             if (e.target === o) o.classList.remove('active');
+        });
+        o.querySelectorAll('[data-close-modal]').forEach(btn => {
+            btn.addEventListener('click', () => o.classList.remove('active'));
         });
     });
 

@@ -12,6 +12,8 @@ const resultCloseBtn = document.getElementById('resultCloseBtn');
 const letters = ['', 'A','B','C','D','E','F','G','H',''];
 const numbers = ['', '8','7','6','5','4','3','2','1',''];
 const myColor = typeof playerColor !== 'undefined' && playerColor ? playerColor : null;
+const MOVE_ANIMATION_MS = 280;
+const MOVE_CHAIN_PAUSE_MS = 60;
 
 document.querySelectorAll('.player-name').forEach(el => (el.style.display = 'none'));
 
@@ -36,10 +38,12 @@ let viewingHistory = false;
 let forcedPieces = [];
 let viewedMoveIndex = 0;
 let isPerformingAutoMove = false;
-
-function delay(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
+let pendingMove = false;
+let animatingBoard = false;
+let timeoutCheckPending = false;
+let lastHistoryLen = 0;
+let locallyAnimatedMove = null;
+let updateQueue = Promise.resolve();
 
 function showModal(m) {
     m.classList.add('active');
@@ -98,6 +102,168 @@ function pieceCaptureMovesLocal(board, r, c, player) {
     return caps;
 }
 
+function cloneBoard(board) {
+    return board.map(row => [...row]);
+}
+
+function parseMoveNotation(move) {
+    const [startStr, endStr] = move.split('->');
+    return {
+        start: [8 - parseInt(startStr.slice(1), 10), startStr.charCodeAt(0) - 65],
+        end: [8 - parseInt(endStr.slice(1), 10), endStr.charCodeAt(0) - 65],
+    };
+}
+
+function formatMoveNotation(start, end) {
+    return `${String.fromCharCode(65 + start[1])}${8 - start[0]}->${String.fromCharCode(65 + end[1])}${8 - end[0]}`;
+}
+
+function createPieceElement(piece, boardRow) {
+    const el = document.createElement('div');
+    el.classList.add('piece', piece.toLowerCase() === 'w' ? 'white' : 'black');
+    if (
+        piece === piece.toUpperCase() ||
+        (piece.toLowerCase() === 'w' && boardRow === 0) ||
+        (piece.toLowerCase() === 'b' && boardRow === 7)
+    ) {
+        el.classList.add('king');
+    }
+    return el;
+}
+
+function boardCell(boardRow, boardCol) {
+    const [displayRow, displayCol] = fromBoardCoords(boardRow, boardCol);
+    return boardElement.querySelector(`[data-row="${displayRow + 1}"][data-col="${displayCol + 1}"]`);
+}
+
+function applyMoveLocal(board, start, end) {
+    const nextBoard = cloneBoard(board);
+    const piece = nextBoard[start[0]][start[1]];
+    if (!piece) {
+        return { board: nextBoard, capturedPositions: [] };
+    }
+    nextBoard[start[0]][start[1]] = null;
+
+    const capturedPositions = [];
+    const stepRow = Math.sign(end[0] - start[0]);
+    const stepCol = Math.sign(end[1] - start[1]);
+    let row = start[0] + stepRow;
+    let col = start[1] + stepCol;
+    while (row !== end[0] || col !== end[1]) {
+        if (nextBoard[row][col] !== null) {
+            capturedPositions.push([row, col]);
+            nextBoard[row][col] = null;
+            break;
+        }
+        row += stepRow;
+        col += stepCol;
+    }
+
+    let movedPiece = piece;
+    if (movedPiece === movedPiece.toLowerCase()) {
+        if (movedPiece === 'w' && end[0] === 0) movedPiece = 'W';
+        if (movedPiece === 'b' && end[0] === 7) movedPiece = 'B';
+    }
+    nextBoard[end[0]][end[1]] = movedPiece;
+    return { board: nextBoard, capturedPositions };
+}
+
+function wait(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function queueHandleUpdate(data) {
+    updateQueue = updateQueue
+        .catch(() => {})
+        .then(() => handleUpdate(data));
+    return updateQueue;
+}
+
+async function animateMoveStep(boardBefore, move) {
+    const { start, end } = parseMoveNotation(move);
+    const piece = boardBefore[start[0]][start[1]];
+    if (!piece) {
+        return boardBefore;
+    }
+
+    const { board: boardAfter, capturedPositions } = applyMoveLocal(boardBefore, start, end);
+    boardState = boardBefore;
+    renderBoard();
+
+    const sourceCell = boardCell(start[0], start[1]);
+    const targetCell = boardCell(end[0], end[1]);
+    const sourcePiece = sourceCell?.querySelector('.piece');
+    if (!sourceCell || !targetCell || !sourcePiece) {
+        boardState = boardAfter;
+        renderBoard();
+        return boardAfter;
+    }
+
+    const boardRect = boardElement.getBoundingClientRect();
+    const sourceRect = sourceCell.getBoundingClientRect();
+    const targetRect = targetCell.getBoundingClientRect();
+    const pieceRect = sourcePiece.getBoundingClientRect();
+    const animatedPiece = sourcePiece.cloneNode(true);
+    animatedPiece.classList.add('piece-animated');
+    animatedPiece.style.left = `${sourceRect.left - boardRect.left + (sourceRect.width - pieceRect.width) / 2}px`;
+    animatedPiece.style.top = `${sourceRect.top - boardRect.top + (sourceRect.height - pieceRect.height) / 2}px`;
+    animatedPiece.style.width = `${pieceRect.width}px`;
+    animatedPiece.style.height = `${pieceRect.height}px`;
+    animatedPiece.style.transform = 'translate3d(0px, 0px, 0px)';
+
+    sourcePiece.classList.add('piece-moving-source');
+    const capturedPieces = capturedPositions
+        .map(([row, col]) => boardCell(row, col)?.querySelector('.piece'))
+        .filter(Boolean);
+    capturedPieces.forEach(el => el.classList.add('piece-captured'));
+
+    boardElement.appendChild(animatedPiece);
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+
+    const dx = targetRect.left - sourceRect.left;
+    const dy = targetRect.top - sourceRect.top;
+    animatedPiece.style.transform = `translate3d(${dx}px, ${dy}px, 0px) scale(1.03)`;
+    await wait(MOVE_ANIMATION_MS);
+
+    animatedPiece.remove();
+    boardState = boardAfter;
+    renderBoard();
+    return boardAfter;
+}
+
+async function playIncomingAnimations(history, previousHistoryLen) {
+    if (animatingBoard || !boardState.length) return;
+    let visibleCount = previousHistoryLen;
+    let newMoves = history.slice(previousHistoryLen);
+    if (locallyAnimatedMove && newMoves[0] === locallyAnimatedMove) {
+        visibleCount += 1;
+        renderHistoryProgress(history, visibleCount);
+        newMoves = newMoves.slice(1);
+    } else if (locallyAnimatedMove) {
+        locallyAnimatedMove = null;
+    }
+    if (!newMoves.length || newMoves.length > 8) {
+        locallyAnimatedMove = null;
+        return;
+    }
+
+    animatingBoard = true;
+    try {
+        let currentBoard = cloneBoard(boardState);
+        for (const move of newMoves) {
+            currentBoard = await animateMoveStep(currentBoard, move);
+            visibleCount += 1;
+            renderHistoryProgress(history, visibleCount);
+            if (move !== newMoves[newMoves.length - 1]) {
+                await wait(MOVE_CHAIN_PAUSE_MS);
+            }
+        }
+    } finally {
+        animatingBoard = false;
+        locallyAnimatedMove = null;
+    }
+}
+
 function computeForcedPieces() {
     forcedPieces = [];
     if (myColor && myColor !== turn) return;
@@ -117,19 +283,43 @@ function computeForcedPieces() {
     }
 }
 
+function clearTransientState() {
+    selected = null;
+    possibleMoves = [];
+    multiCapture = false;
+    forcedPieces = [];
+}
+
+function renderHistoryProgress(history, visibleCount = history.length) {
+    viewedMoveIndex = visibleCount;
+    updateHistory(history.slice(0, visibleCount));
+}
+
+function applyForcedState(data) {
+    clearTransientState();
+    const hasForcedPiece = Array.isArray(data.forced_piece) && data.forced_piece.length === 2;
+    const forcedMoves = Array.isArray(data.forced_moves) ? data.forced_moves : [];
+    if (hasForcedPiece && forcedMoves.length && (!myColor || myColor === turn)) {
+        const [row, col] = data.forced_piece;
+        forcedPieces = [{ row, col, moves: forcedMoves }];
+        selected = { row, col, isCapture: true };
+        possibleMoves = forcedMoves;
+        multiCapture = true;
+        return;
+    }
+    computeForcedPieces();
+}
+
 async function autoMoveIfSingle() {
-    if (viewingHistory || gameOver || isPerformingAutoMove) return;
+    if (viewingHistory || gameOver || isPerformingAutoMove || pendingMove || multiCapture || animatingBoard) return;
     if (myColor && turn !== myColor) return;
     if (forcedPieces.length === 1 && forcedPieces[0].moves.length === 1) {
         isPerformingAutoMove = true;
         try {
-            await fetchBoard();
-            if (!(forcedPieces.length === 1 && forcedPieces[0].moves.length === 1)) return;
             const fp = forcedPieces[0];
             selected = { row: fp.row, col: fp.col, isCapture: true };
             possibleMoves = fp.moves;
             renderBoard();
-            await delay(300);
             await performMove(fp.row, fp.col, fp.moves[0][0], fp.moves[0][1], true);
         } finally {
             isPerformingAutoMove = false;
@@ -137,14 +327,31 @@ async function autoMoveIfSingle() {
     }
 }
 
+function isFinishedUpdate(data) {
+    return Boolean(data?.status || data?.timers?.turn === 'stopped');
+}
+
+function setGameActionsVisible(visible) {
+    ['menuEnd', 'menuDraw'].forEach(id => {
+        const item = document.getElementById(id);
+        if (item) item.hidden = !visible;
+    });
+}
+
 async function handleUpdate(data) {
-    const finished = data.status && ['white_win','black_win','draw','ended'].includes(data.status);
+    const wasGameOver = gameOver;
+    const wasViewingHistory = viewingHistory;
+    const previousHistoryLen = lastHistoryLen;
+    if (!wasViewingHistory && boardState.length && data.history.length > previousHistoryLen) {
+        await playIncomingAnimations(data.history, previousHistoryLen);
+    }
+    const finished = isFinishedUpdate(data);
     boardState = data.board;
     timers = data.timers;
     timerStart = Date.now();
     turn = data.timers.turn;
-    viewedMoveIndex = data.history.length;
-    updateHistory(data.history);
+    lastHistoryLen = data.history.length;
+    renderHistoryProgress(data.history);
     viewingHistory = false;
     if (data.players) {
         if (data.players.white) player1.querySelector('.player-name').textContent = data.players.white;
@@ -152,18 +359,19 @@ async function handleUpdate(data) {
     }
     returnButton.style.display = 'none';
     if (finished) gameOver = true;
+    setGameActionsVisible(!finished);
     setActivePlayer(turn);
     if (!gameOver && (turn === 'white' || turn === 'black')) {
         startTimers();
     } else {
         stopTimers();
     }
-    computeForcedPieces();
+    applyForcedState(data);
     renderBoard();
     if (!gameOver && !isPerformingAutoMove) {
         await autoMoveIfSingle();
     }
-    if (finished) {
+    if (finished && !wasGameOver) {
         let msg = '';
         if (data.status === 'white_win') msg = 'Белые победили!';
         else if (data.status === 'black_win') msg = 'Чёрные победили!';
@@ -177,7 +385,7 @@ async function handleUpdate(data) {
 
 async function fetchBoard() {
     const data = await (await fetch(`/api/hotseat/board/${boardId}`)).json();
-    await handleUpdate(data);
+    await queueHandleUpdate(data);
 }
 
 async function fetchMoves(r, c) {
@@ -193,43 +401,64 @@ async function fetchCaptures(r, c) {
 }
 
 async function performMove(startR, startC, endR, endC, isCapture) {
-    const res = await fetch(`/api/hotseat/move/${boardId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            start: [startR, startC],
-            end: [endR, endC],
-            player: turn
-        })
-    });
-    const data = await res.json();
-    if (!res.ok) {
-        showNotification(data.detail || 'Неверный ход', 'error');
-        return;
-    }
-    await handleUpdate(data);
-    if (isCapture) {
-        const nextCaps = await fetchCaptures(endR, endC);
-        if (nextCaps.length === 1) {
-            selected = { row: endR, col: endC, isCapture: true };
-            possibleMoves = nextCaps;
+    if (pendingMove) return;
+    pendingMove = true;
+    const moveNotation = formatMoveNotation([startR, startC], [endR, endC]);
+    const originalBoard = cloneBoard(boardState);
+    const originalSelected = selected ? { ...selected } : null;
+    const originalPossibleMoves = possibleMoves.map(move => [...move]);
+    const originalForcedPieces = forcedPieces.map(piece => ({
+        row: piece.row,
+        col: piece.col,
+        moves: piece.moves.map(move => [...move]),
+    }));
+    const originalMultiCapture = multiCapture;
+    try {
+        clearTransientState();
+        animatingBoard = true;
+        boardState = await animateMoveStep(originalBoard, moveNotation);
+        animatingBoard = false;
+        locallyAnimatedMove = moveNotation;
+        const res = await fetch(`/api/hotseat/move/${boardId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                start: [startR, startC],
+                end: [endR, endC],
+                player: turn,
+                history_len: lastHistoryLen
+            })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            locallyAnimatedMove = null;
+            boardState = originalBoard;
+            selected = originalSelected;
+            possibleMoves = originalPossibleMoves;
+            forcedPieces = originalForcedPieces;
+            multiCapture = originalMultiCapture;
             renderBoard();
-            await delay(300);
-            await performMove(endR, endC, nextCaps[0][0], nextCaps[0][1], true);
-            return;
-        } else if (nextCaps.length > 0) {
-            selected = { row: endR, col: endC, isCapture: true };
-            possibleMoves = nextCaps;
-            multiCapture = true;
-            renderBoard();
+            if (res.status === 409) {
+                await fetchBoard();
+            }
+            showNotification(data.detail || 'Неверный ход', 'error');
             return;
         }
+        await queueHandleUpdate(data);
+        await autoMoveIfSingle();
+    } catch (error) {
+        locallyAnimatedMove = null;
+        boardState = originalBoard;
+        selected = originalSelected;
+        possibleMoves = originalPossibleMoves;
+        forcedPieces = originalForcedPieces;
+        multiCapture = originalMultiCapture;
+        renderBoard();
+        showNotification('Ошибка соединения', 'error');
+    } finally {
+        animatingBoard = false;
+        pendingMove = false;
     }
-    multiCapture = false;
-    selected = null;
-    possibleMoves = [];
-    renderBoard();
-    await autoMoveIfSingle();
 }
 
 function renderBoard() {
@@ -262,15 +491,7 @@ function renderBoard() {
                 }
                 const piece = boardState[br][bc];
                 if (piece) {
-                    const p = document.createElement('div');
-                    p.classList.add('piece', piece.toLowerCase() === 'w' ? 'white' : 'black');
-                    if (
-                        piece === piece.toUpperCase() ||
-                        (piece.toLowerCase() === 'w' && br === 0) ||
-                        (piece.toLowerCase() === 'b' && br === 7)
-                    ) {
-                        p.classList.add('king');
-                    }
+                    const p = createPieceElement(piece, br);
                     cell.appendChild(p);
                 }
                 cell.addEventListener('click', onCellClick);
@@ -281,7 +502,7 @@ function renderBoard() {
 }
 
 async function onCellClick(e) {
-    if (gameOver || viewingHistory) return;
+    if (gameOver || viewingHistory || pendingMove || animatingBoard) return;
     if (myColor && turn !== myColor) return;
     const row = +e.currentTarget.dataset.row;
     const col = +e.currentTarget.dataset.col;
@@ -349,14 +570,16 @@ function highlightHistoryItem(index) {
 }
 
 async function onHistoryClick(e) {
+    if (pendingMove) return;
     const idx = parseInt(e.currentTarget.dataset.index);
     if (idx === historyList.childElementCount) {
-        fetchBoard();
+        await fetchBoard();
         return;
     }
     const data = await (await fetch(`/api/hotseat/snapshot/${boardId}/${idx}`)).json();
     boardState = data;
     if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+    clearTransientState();
     viewingHistory = true;
     viewedMoveIndex = idx;
     highlightHistoryItem(idx);
@@ -437,15 +660,20 @@ function startTimers() {
 }
 
 async function checkTimeout() {
+    if (timeoutCheckPending || gameOver) return;
+    timeoutCheckPending = true;
     try {
         const res = await fetch(`/api/hotseat/check_timeout/${boardId}`, { method: 'POST' });
         if (res.ok) {
             const data = await res.json();
             if (data.status) {
-                await handleUpdate(data);
+                await queueHandleUpdate(data);
             }
         }
-    } catch (e) {}
+    } catch (e) {
+    } finally {
+        timeoutCheckPending = false;
+    }
 }
 
 function buildWsUrl() {
@@ -456,9 +684,8 @@ function buildWsUrl() {
 function setupWebSocket() {
     const ws = new WebSocket(buildWsUrl());
     ws.addEventListener('message', async (e) => {
-        if (gameOver) return;
         const data = JSON.parse(e.data);
-        await handleUpdate(data);
+        await queueHandleUpdate(data);
     });
     ws.addEventListener('close', () => {
         setTimeout(setupWebSocket, 1000);
@@ -496,6 +723,7 @@ document.addEventListener('click', () => {
 
 function endHotseat() {
     gameOver = true;
+    setGameActionsVisible(false);
     stopTimers();
     fetch(`/api/hotseat/end/${boardId}`, { method: 'POST' }).catch(() => {});
 }
@@ -504,15 +732,30 @@ document.getElementById('menuHome').addEventListener('click', () => {
     window.location.href = '/';
 });
 
-document.getElementById('menuEnd').addEventListener('click', async () => {
+const menuEnd = document.getElementById('menuEnd');
+const menuDraw = document.getElementById('menuDraw');
+
+menuEnd.addEventListener('click', async () => {
+    if (gameOver) return;
     rightSidebar.classList.remove('open');
-    gameOver = true;
+    setGameActionsVisible(false);
     stopTimers();
     const res = await fetch(`/api/hotseat/end/${boardId}`, { method: 'POST' });
     if (res.ok) {
         const data = await res.json();
-        resultText.textContent = 'Игра окончена';
-        await handleUpdate(data);
+        await queueHandleUpdate(data);
+    }
+});
+
+menuDraw.addEventListener('click', async () => {
+    if (gameOver) return;
+    rightSidebar.classList.remove('open');
+    setGameActionsVisible(false);
+    stopTimers();
+    const res = await fetch(`/api/hotseat/draw/${boardId}`, { method: 'POST' });
+    if (res.ok) {
+        const data = await res.json();
+        await queueHandleUpdate(data);
     }
 });
 

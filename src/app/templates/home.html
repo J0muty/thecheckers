@@ -52,6 +52,9 @@
     </div>
     <div id="singleModal" class="modal-overlay" role="dialog" aria-modal="true">
         <div class="modal fancy-modal" tabindex="-1">
+            <button class="modal-close-btn" type="button" aria-label="Закрыть окно" data-close-modal>
+                <i class="fa-solid fa-xmark"></i>
+            </button>
             <h2 class="modal-title">Выберите сложность и цвет</h2>
             <form class="modal-options" id="singleForm">
                 <fieldset class="radio-group">
@@ -62,6 +65,8 @@
                     <label for="diff-medium" class="radio-card">Средне</label>
                     <input type="radio" id="diff-hard" name="difficulty" value="hard">
                     <label for="diff-hard" class="radio-card">Сложно</label>
+                    <input type="radio" id="diff-hardcore" name="difficulty" value="hardcore">
+                    <label for="diff-hardcore" class="radio-card">Хардкор</label>
                 </fieldset>
                 <fieldset class="radio-group">
                     <legend>Цвет</legend>
@@ -79,6 +84,9 @@
     </div>
     <div id="netModal" class="modal-overlay" role="dialog" aria-modal="true">
         <div class="modal fancy-modal" tabindex="-1">
+            <button class="modal-close-btn" type="button" aria-label="Закрыть окно" data-close-modal>
+                <i class="fa-solid fa-xmark"></i>
+            </button>
             <h2 class="modal-title">Выберите режим</h2>
             <div class="modal-menu">
                 <button id="netSearchBtn" class="btn" type="button">Поиск</button>

@@ -17,6 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function closeAllDropdowns(){
         document.querySelectorAll('.dropdown.open').forEach(d=>d.classList.remove('open'));
+        document.querySelectorAll('.menu-wrapper.open').forEach(w=>w.classList.remove('open'));
     }
     document.addEventListener('click',e=>{
         if(!e.target.closest('.menu-wrapper')) closeAllDropdowns();
@@ -68,7 +69,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     e.stopPropagation();
                     const alreadyOpen=dropdown.classList.contains('open');
                     closeAllDropdowns();
-                    if(!alreadyOpen) dropdown.classList.add('open');
+                    if(!alreadyOpen) {
+                        dropdown.classList.add('open');
+                        dropdown.closest('.menu-wrapper')?.classList.add('open');
+                    }
                 });
 
                 friendsList.appendChild(li);
@@ -80,7 +84,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 requestsBlock.style.display='block';
                 incoming.forEach(u=>{
                     const li=document.createElement('li');
-                    li.textContent=u.login;
+                    const nameSpan=document.createElement('span');
+                    nameSpan.className='friend-name';
+                    nameSpan.textContent=u.login;
+                    li.appendChild(nameSpan);
 
                     const btnAccept=document.createElement('button');
                     btnAccept.className='icon-btn';
@@ -126,7 +133,10 @@ document.addEventListener('DOMContentLoaded', () => {
             resultsList.innerHTML='';
             data.users.forEach(u=>{
                 const li=document.createElement('li');
-                li.textContent=u.login;
+                const nameSpan=document.createElement('span');
+                nameSpan.className='friend-name';
+                nameSpan.textContent=u.login;
+                li.appendChild(nameSpan);
 
                 const btn=document.createElement('button');
                 btn.className='icon-btn';

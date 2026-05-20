@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Просмотр партии</title>
+    <link rel="icon" href="/static/base/favicon.svg" type="image/svg+xml">
     <script>
         if (localStorage.theme === 'dark') {
             document.documentElement.classList.add('dark-mode');
@@ -10,7 +11,9 @@
     </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="/static/board/board.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="/static/base/toast.css">
+    <link rel="stylesheet" href="/static/base/theme.css">
     <script>
         const boardId = "{{ game_id }}";
         const playerColor = "{{ player_color }}";
@@ -19,6 +22,9 @@
     <script src="/static/board/replay.js" defer></script>
 </head>
 <body>
+    <button id="theme-toggle" class="theme-toggle floating-theme game-theme-toggle" type="button" aria-label="Переключить тему">
+        <i class="fa-solid fa-moon" id="theme-icon"></i>
+    </button>
     <div class="game-container">
         <div class="sidebar">
             <div class="players">
@@ -43,4 +49,5 @@
     </div>
 </body>
 <script src="/static/base/session_ws.js"></script>
+<script src="/static/base/theme.js"></script>
 </html>

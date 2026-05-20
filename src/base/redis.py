@@ -1,10 +1,13 @@
 import json
-import redis.asyncio as redis
-import time
 import logging
+import time
 import uuid
-from typing import List, Tuple
-from src.app.game.game_logic import create_initial_board, validate_move, Board
+from typing import Any, List, Tuple
+
+import redis.asyncio as redis
+
+from src.app.game.game_logic import Board, create_initial_board, rebuild_board_from_history
+from src.app.game.draw_logic import initial_draw_state
 from src.settings.config import redis_host, redis_port, redis_db
 from src.app.utils.guest import is_guest
 
@@ -18,7 +21,9 @@ USER_HOTSEAT_KEY_PREFIX = "user_hotseat"
 HISTORY_KEY_PREFIX = "history"
 TIMER_KEY_PREFIX = "timer"
 PLAYERS_KEY = "players"
+CHAIN_KEY_PREFIX = "chain"
 DRAW_OFFER_KEY_PREFIX = "draw_offer"
+DRAW_STATE_KEY_PREFIX = "draw_state"
 DEFAULT_TIME = 600
 WAITING_KEY_REG = "waiting_user_reg"
 WAITING_KEY_GUEST = "waiting_user_guest"
@@ -31,6 +36,31 @@ REMATCH_INVITES_PREFIX = "rematch_invites"
 USER_REMATCH_PREFIX = "user_rematch"
 
 logger = logging.getLogger(__name__)
+
+
+def _board_key(board_id: str) -> str:
+    return f"{REDIS_KEY_PREFIX}:{board_id}:state"
+
+
+def _history_key(board_id: str) -> str:
+    return f"{REDIS_KEY_PREFIX}:{board_id}:{HISTORY_KEY_PREFIX}"
+
+
+def _timer_key(board_id: str) -> str:
+    return f"{REDIS_KEY_PREFIX}:{board_id}:{TIMER_KEY_PREFIX}"
+
+
+def _players_key(board_id: str) -> str:
+    return f"{REDIS_KEY_PREFIX}:{board_id}:{PLAYERS_KEY}"
+
+
+def _chain_key(board_id: str) -> str:
+    return f"{REDIS_KEY_PREFIX}:{board_id}:{CHAIN_KEY_PREFIX}"
+
+
+def _draw_key(board_id: str) -> str:
+    return f"{REDIS_KEY_PREFIX}:{board_id}:{DRAW_STATE_KEY_PREFIX}"
+
 
 def _waiting_key(username: str) -> str:
     return WAITING_KEY_GUEST if is_guest(username) else WAITING_KEY_REG
@@ -52,23 +82,24 @@ async def check_redis_connection():
         print(f"❌ Ошибка подключения к Redis: {e}")
 
 async def board_exists(board_id: str) -> bool:
-    key = f"{REDIS_KEY_PREFIX}:{board_id}:state"
-    return bool(await redis_client.exists(key))
+    return bool(await redis_client.exists(_board_key(board_id)))
 
 async def get_board_state(board_id: str, create: bool = True):
-    key = f"{REDIS_KEY_PREFIX}:{board_id}:state"
+    key = _board_key(board_id)
     raw = await redis_client.get(key)
     if not raw:
         if not create:
             return None
         board = create_initial_board()
-        await redis_client.set(key, json.dumps(board))
+        pipe = redis_client.pipeline(transaction=True)
+        pipe.set(key, json.dumps(board))
+        pipe.set(_draw_key(board_id), json.dumps(initial_draw_state(board)))
+        await pipe.execute()
         return board
     return json.loads(raw)
 
 async def save_board_state(board_id: str, board):
-    key = f"{REDIS_KEY_PREFIX}:{board_id}:state"
-    await redis_client.set(key, json.dumps(board))
+    await redis_client.set(_board_key(board_id), json.dumps(board))
 
 async def assign_user_board(username: str, board_id: str):
     key = f"{USER_BOARD_KEY_PREFIX}:{username}"
@@ -79,12 +110,10 @@ async def assign_user_hotseat(username: str, board_id: str):
     await redis_client.set(key, board_id)
 
 async def set_board_players(board_id: str, players: dict):
-    key = f"{REDIS_KEY_PREFIX}:{board_id}:{PLAYERS_KEY}"
-    await redis_client.set(key, json.dumps(players))
+    await redis_client.set(_players_key(board_id), json.dumps(players))
 
 async def get_board_players(board_id: str):
-    key = f"{REDIS_KEY_PREFIX}:{board_id}:{PLAYERS_KEY}"
-    raw = await redis_client.get(key)
+    raw = await redis_client.get(_players_key(board_id))
     return json.loads(raw) if raw else None
 
 async def get_user_board(username: str):
@@ -100,13 +129,11 @@ async def clear_user_hotseat(username: str):
     await redis_client.delete(key)
 
 async def get_history(board_id: str):
-    key = f"{REDIS_KEY_PREFIX}:{board_id}:{HISTORY_KEY_PREFIX}"
-    raw = await redis_client.lrange(key, 0, -1)
+    raw = await redis_client.lrange(_history_key(board_id), 0, -1)
     return raw if raw is not None else []
 
 async def append_history(board_id: str, move: str):
-    key = f"{REDIS_KEY_PREFIX}:{board_id}:{HISTORY_KEY_PREFIX}"
-    await redis_client.rpush(key, move)
+    await redis_client.rpush(_history_key(board_id), move)
 
 async def _read_timers(board_id: str, create: bool = True):
     """Read timers for a board.
@@ -115,7 +142,7 @@ async def _read_timers(board_id: str, create: bool = True):
     stored, instead of initialising them. This helps to avoid resurrecting
     expired games when a client polls old endpoints.
     """
-    key = f"{REDIS_KEY_PREFIX}:{board_id}:{TIMER_KEY_PREFIX}"
+    key = _timer_key(board_id)
     raw = await redis_client.get(key)
     if not raw:
         if not create:
@@ -150,8 +177,7 @@ async def apply_move_timer(board_id: str, player: str):
     timers[player] = max(0, timers[player] - elapsed)
     timers["turn"] = "black" if player == "white" else "white"
     timers["last_ts"] = now
-    key = f"{REDIS_KEY_PREFIX}:{board_id}:{TIMER_KEY_PREFIX}"
-    await redis_client.set(key, json.dumps(timers))
+    await redis_client.set(_timer_key(board_id), json.dumps(timers))
     return timers
 
 async def apply_same_turn_timer(board_id: str, player: str):
@@ -160,8 +186,7 @@ async def apply_same_turn_timer(board_id: str, player: str):
     elapsed = now - timers["last_ts"]
     timers[player] = max(0, timers[player] - elapsed)
     timers["last_ts"] = now
-    key = f"{REDIS_KEY_PREFIX}:{board_id}:{TIMER_KEY_PREFIX}"
-    await redis_client.set(key, json.dumps(timers))
+    await redis_client.set(_timer_key(board_id), json.dumps(timers))
     return timers
 
 async def freeze_timers(board_id: str):
@@ -175,9 +200,43 @@ async def freeze_timers(board_id: str):
         timers[turn] = max(0, timers[turn] - elapsed)
         timers["last_ts"] = now
     timers["turn"] = "stopped"
-    key = f"{REDIS_KEY_PREFIX}:{board_id}:{TIMER_KEY_PREFIX}"
-    await redis_client.set(key, json.dumps(timers))
+    await redis_client.set(_timer_key(board_id), json.dumps(timers))
     return timers
+
+
+async def get_chain_state(board_id: str) -> dict[str, Any] | None:
+    raw = await redis_client.get(_chain_key(board_id))
+    return json.loads(raw) if raw else None
+
+
+async def save_chain_state(board_id: str, state: dict[str, Any] | None) -> None:
+    key = _chain_key(board_id)
+    if state is None:
+        await redis_client.delete(key)
+        return
+    await redis_client.set(key, json.dumps(state))
+
+
+async def clear_chain_state(board_id: str) -> None:
+    await redis_client.delete(_chain_key(board_id))
+
+
+async def get_draw_state(board_id: str) -> dict[str, Any] | None:
+    raw = await redis_client.get(_draw_key(board_id))
+    return json.loads(raw) if raw else None
+
+
+async def save_draw_state(board_id: str, state: dict[str, Any] | None) -> None:
+    key = _draw_key(board_id)
+    if state is None:
+        await redis_client.delete(key)
+        return
+    await redis_client.set(key, json.dumps(state))
+
+
+async def clear_draw_state(board_id: str) -> None:
+    await redis_client.delete(_draw_key(board_id))
+
 
 async def get_board_state_at(board_id: str, index: int) -> Board:
     history = await get_history(board_id)
@@ -185,26 +244,7 @@ async def get_board_state_at(board_id: str, index: int) -> Board:
     if index >= len(history):
         logger.info("Requested index %d beyond history length %d", index, len(history))
         return await get_board_state(board_id)
-    parsed_moves: List[Tuple[Tuple[int, int], Tuple[int, int]]] = []
-    for mv in history[:index]:
-        start_str, end_str = mv.split("->")
-        start = (8 - int(start_str[1]), ord(start_str[0]) - 65)
-        end = (8 - int(end_str[1]), ord(end_str[0]) - 65)
-        parsed_moves.append((start, end))
-    board = create_initial_board()
-    player = "white"
-    for i, (start, end) in enumerate(parsed_moves):
-        logger.debug("Replaying step %d by %s: %s -> %s", i + 1, player, start, end)
-        board = validate_move(board, start, end, player)
-        dr = abs(end[0] - start[0])
-        dc = abs(end[1] - start[1])
-        is_capture = dr > 1 or dc > 1
-        next_in_chain = (
-            is_capture and i + 1 < len(parsed_moves) and parsed_moves[i + 1][0] == end
-        )
-        if not next_in_chain:
-            player = "black" if player == "white" else "white"
-    return board
+    return rebuild_board_from_history(history, index=index)
 
 async def add_to_waiting(username: str):
     board_id = await get_user_board(username)

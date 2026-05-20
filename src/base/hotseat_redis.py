@@ -1,60 +1,117 @@
 import json
-import time
 import logging
-from typing import List, Tuple
+import time
+from typing import Any, List
 
-from .redis import redis_client, USER_HOTSEAT_KEY_PREFIX
-from src.app.game.game_logic import create_initial_board, validate_move, Board
+from .redis import USER_HOTSEAT_KEY_PREFIX, redis_client
+from src.app.game.game_logic import Board, create_initial_board, rebuild_board_from_history
+from src.app.game.draw_logic import initial_draw_state
 
 HOTSEAT_REDIS_KEY_PREFIX = "hotseat_board"
 HISTORY_KEY_PREFIX = "history"
 TIMER_KEY_PREFIX = "timer"
+CHAIN_KEY_PREFIX = "chain"
+DRAW_STATE_KEY_PREFIX = "draw_state"
 DEFAULT_TIME = 600
 
 logger = logging.getLogger(__name__)
 
 
+def _state_key(game_id: str) -> str:
+    return f"{HOTSEAT_REDIS_KEY_PREFIX}:{game_id}:state"
+
+
+def _history_key(game_id: str) -> str:
+    return f"{HOTSEAT_REDIS_KEY_PREFIX}:{game_id}:{HISTORY_KEY_PREFIX}"
+
+
+def _timer_key(game_id: str) -> str:
+    return f"{HOTSEAT_REDIS_KEY_PREFIX}:{game_id}:{TIMER_KEY_PREFIX}"
+
+
+def _chain_key(game_id: str) -> str:
+    return f"{HOTSEAT_REDIS_KEY_PREFIX}:{game_id}:{CHAIN_KEY_PREFIX}"
+
+
+def _draw_key(game_id: str) -> str:
+    return f"{HOTSEAT_REDIS_KEY_PREFIX}:{game_id}:{DRAW_STATE_KEY_PREFIX}"
+
+
+async def _matching_keys(pattern: str) -> list[str]:
+    return [key async for key in redis_client.scan_iter(match=pattern)]
+
+
+async def _history_type(key: str) -> str:
+    return await redis_client.type(key)
+
+
+async def _read_history_string(key: str) -> list[str]:
+    raw = await redis_client.get(key)
+    if not raw:
+        return []
+    try:
+        value = json.loads(raw)
+    except json.JSONDecodeError:
+        return []
+    return value if isinstance(value, list) else []
+
+
+async def _migrate_history_to_list(key: str, history: list[str]) -> None:
+    pipe = redis_client.pipeline(transaction=True)
+    pipe.delete(key)
+    if history:
+        pipe.rpush(key, *history)
+    await pipe.execute()
+
+
 async def game_exists(game_id: str) -> bool:
-    """Check if a hotseat game state exists."""
-    key = f"{HOTSEAT_REDIS_KEY_PREFIX}:{game_id}:state"
-    return bool(await redis_client.exists(key))
+    return bool(await redis_client.exists(_state_key(game_id)))
 
 
 async def get_board_state(game_id: str, create: bool = True) -> Board | None:
-    key = f"{HOTSEAT_REDIS_KEY_PREFIX}:{game_id}:state"
-    raw = await redis_client.get(key)
+    raw = await redis_client.get(_state_key(game_id))
     if not raw:
         if not create:
             return None
         board = create_initial_board()
-        await redis_client.set(key, json.dumps(board))
+        pipe = redis_client.pipeline(transaction=True)
+        pipe.set(_state_key(game_id), json.dumps(board))
+        pipe.set(_draw_key(game_id), json.dumps(initial_draw_state(board)))
+        await pipe.execute()
         return board
     return json.loads(raw)
 
 
 async def save_board_state(game_id: str, board: Board) -> None:
-    key = f"{HOTSEAT_REDIS_KEY_PREFIX}:{game_id}:state"
-    await redis_client.set(key, json.dumps(board))
+    await redis_client.set(_state_key(game_id), json.dumps(board))
 
 
 async def get_history(game_id: str) -> List[str]:
-    key = f"{HOTSEAT_REDIS_KEY_PREFIX}:{game_id}:{HISTORY_KEY_PREFIX}"
-    raw = await redis_client.get(key)
-    if not raw:
+    key = _history_key(game_id)
+    key_type = await _history_type(key)
+    if key_type == "none":
         return []
-    return json.loads(raw)
+    if key_type == "list":
+        return await redis_client.lrange(key, 0, -1)
+    history = await _read_history_string(key)
+    if history:
+        await _migrate_history_to_list(key, history)
+    return history
 
 
 async def append_history(game_id: str, move: str) -> None:
-    history = await get_history(game_id)
-    history.append(move)
-    key = f"{HOTSEAT_REDIS_KEY_PREFIX}:{game_id}:{HISTORY_KEY_PREFIX}"
-    await redis_client.set(key, json.dumps(history))
+    key = _history_key(game_id)
+    key_type = await _history_type(key)
+    if key_type == "string":
+        history = await _read_history_string(key)
+        history.append(move)
+        await _migrate_history_to_list(key, history)
+        return
+    await redis_client.rpush(key, move)
 
 
-async def _read_timers(game_id: str, create: bool = True):
-    key = f"{HOTSEAT_REDIS_KEY_PREFIX}:{game_id}:{TIMER_KEY_PREFIX}"
-    raw = await redis_client.get(key)
+async def _read_timers(game_id: str, create: bool = True) -> dict[str, Any] | None:
+    raw = await redis_client.get(_timer_key(game_id))
     if not raw:
         if not create:
             return None
@@ -64,7 +121,7 @@ async def _read_timers(game_id: str, create: bool = True):
             "turn": "white",
             "last_ts": time.time(),
         }
-        await redis_client.set(key, json.dumps(timers))
+        await redis_client.set(_timer_key(game_id), json.dumps(timers))
         return timers
     return json.loads(raw)
 
@@ -90,8 +147,7 @@ async def apply_move_timer(game_id: str, player: str):
     timers[player] = max(0, timers[player] - elapsed)
     timers["turn"] = "black" if player == "white" else "white"
     timers["last_ts"] = now
-    key = f"{HOTSEAT_REDIS_KEY_PREFIX}:{game_id}:{TIMER_KEY_PREFIX}"
-    await redis_client.set(key, json.dumps(timers))
+    await redis_client.set(_timer_key(game_id), json.dumps(timers))
     return timers
 
 
@@ -101,9 +157,9 @@ async def apply_same_turn_timer(game_id: str, player: str):
     elapsed = now - timers["last_ts"]
     timers[player] = max(0, timers[player] - elapsed)
     timers["last_ts"] = now
-    key = f"{HOTSEAT_REDIS_KEY_PREFIX}:{game_id}:{TIMER_KEY_PREFIX}"
-    await redis_client.set(key, json.dumps(timers))
+    await redis_client.set(_timer_key(game_id), json.dumps(timers))
     return timers
+
 
 async def freeze_timers(game_id: str):
     timers = await _read_timers(game_id, create=False)
@@ -116,62 +172,76 @@ async def freeze_timers(game_id: str):
         timers[turn] = max(0, timers[turn] - elapsed)
         timers["last_ts"] = now
     timers["turn"] = "stopped"
-    key = f"{HOTSEAT_REDIS_KEY_PREFIX}:{game_id}:{TIMER_KEY_PREFIX}"
-    await redis_client.set(key, json.dumps(timers))
+    await redis_client.set(_timer_key(game_id), json.dumps(timers))
     return timers
+
+
+async def get_chain_state(game_id: str) -> dict[str, Any] | None:
+    raw = await redis_client.get(_chain_key(game_id))
+    return json.loads(raw) if raw else None
+
+
+async def save_chain_state(game_id: str, state: dict[str, Any] | None) -> None:
+    key = _chain_key(game_id)
+    if state is None:
+        await redis_client.delete(key)
+        return
+    await redis_client.set(key, json.dumps(state))
+
+
+async def clear_chain_state(game_id: str) -> None:
+    await redis_client.delete(_chain_key(game_id))
+
+
+async def get_draw_state(game_id: str) -> dict[str, Any] | None:
+    raw = await redis_client.get(_draw_key(game_id))
+    return json.loads(raw) if raw else None
+
+
+async def save_draw_state(game_id: str, state: dict[str, Any] | None) -> None:
+    key = _draw_key(game_id)
+    if state is None:
+        await redis_client.delete(key)
+        return
+    await redis_client.set(key, json.dumps(state))
+
+
+async def clear_draw_state(game_id: str) -> None:
+    await redis_client.delete(_draw_key(game_id))
+
 
 async def get_board_state_at(game_id: str, index: int) -> Board:
     history = await get_history(game_id)
     logger.info("Rebuilding hotseat board %s at step %d", game_id, index)
     if index >= len(history):
         return await get_board_state(game_id)
-
-    parsed_moves: List[Tuple[Tuple[int, int], Tuple[int, int]]] = []
-    for mv in history[:index]:
-        start_str, end_str = mv.split("->")
-        start = (8 - int(start_str[1]), ord(start_str[0]) - 65)
-        end = (8 - int(end_str[1]), ord(end_str[0]) - 65)
-        parsed_moves.append((start, end))
-
-    board = create_initial_board()
-    player = "white"
-
-    for i, (start, end) in enumerate(parsed_moves):
-        board = validate_move(board, start, end, player)
-        dr = abs(end[0] - start[0])
-        dc = abs(end[1] - start[1])
-        is_capture = dr > 1 or dc > 1
-        next_in_chain = (
-            is_capture and i + 1 < len(parsed_moves) and parsed_moves[i + 1][0] == end
-        )
-        if not next_in_chain:
-            player = "black" if player == "white" else "white"
-
-    return board
+    return rebuild_board_from_history(history, index=index)
 
 
 async def cleanup_board(game_id: str):
-    keys = await redis_client.keys(f"{HOTSEAT_REDIS_KEY_PREFIX}:{game_id}:*")
+    keys = await _matching_keys(f"{HOTSEAT_REDIS_KEY_PREFIX}:{game_id}:*")
     if keys:
         await redis_client.delete(*keys)
-    user_keys = await redis_client.keys(f"{USER_HOTSEAT_KEY_PREFIX}:*")
+    user_keys = await _matching_keys(f"{USER_HOTSEAT_KEY_PREFIX}:*")
     for key in user_keys:
         val = await redis_client.get(key)
         if val == game_id:
             await redis_client.delete(key)
 
+
 async def expire_board(game_id: str, delay: int = 300):
-    keys = await redis_client.keys(f"{HOTSEAT_REDIS_KEY_PREFIX}:{game_id}:*")
+    keys = await _matching_keys(f"{HOTSEAT_REDIS_KEY_PREFIX}:{game_id}:*")
     for key in keys:
         await redis_client.expire(key, delay)
-    user_keys = await redis_client.keys(f"{USER_HOTSEAT_KEY_PREFIX}:*")
+    user_keys = await _matching_keys(f"{USER_HOTSEAT_KEY_PREFIX}:*")
     for key in user_keys:
         val = await redis_client.get(key)
         if val == game_id:
             await redis_client.expire(key, delay)
 
+
 async def get_game_user(game_id: str) -> str | None:
-    keys = await redis_client.keys(f"{USER_HOTSEAT_KEY_PREFIX}:*")
+    keys = await _matching_keys(f"{USER_HOTSEAT_KEY_PREFIX}:*")
     for key in keys:
         val = await redis_client.get(key)
         if val == game_id:

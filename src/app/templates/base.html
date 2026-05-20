@@ -9,10 +9,12 @@
         }
     </script>
     <title>{% block title %}TheCheckers{% endblock %}</title>
+    <link rel="icon" href="/static/base/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="/static/base/base.css">
     <link rel="stylesheet" href="/static/base/toast.css">
     {% block extra_css %}{% endblock %}
+    <link rel="stylesheet" href="/static/base/theme.css">
     <script>
         window.globalUserId = "{{ request.session.get('user_id','')|string }}";
         window.globalSessionToken = "{{ request.session.get('session_token','')|string }}";
@@ -24,6 +26,9 @@
 <body class="{% block body_class %}{% endblock %}">
     <header class="header">
         <div class="logo">TheCheckers</div>
+        <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Переключить тему">
+            <i class="fa-solid fa-moon" id="theme-icon"></i>
+        </button>
         {% set uid = request.session.get('user_id') %}
         {% set guest = (uid is string) and uid.startswith('ghost_') %}
         <nav class="nav">

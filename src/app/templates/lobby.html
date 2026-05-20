@@ -4,13 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Лобби</title>
+    <link rel="icon" href="/static/base/favicon.svg" type="image/svg+xml">
     <script>if(localStorage.theme==='dark'){document.documentElement.classList.add('dark-mode')}</script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <link rel="stylesheet" href="/static/lobby/lobby.css">
     <link rel="stylesheet" href="/static/chat/chat.css">
     <link rel="stylesheet" href="/static/base/toast.css">
+    <link rel="stylesheet" href="/static/base/theme.css">
 </head>
 <body>
+    <button id="theme-toggle" class="theme-toggle floating-theme" type="button" aria-label="Переключить тему">
+        <i class="fa-solid fa-moon" id="theme-icon"></i>
+    </button>
     <div class="lobby-wrapper">
         <main class="lobby-card">
             <h2 style="text-align:center;font-size:1.6rem;font-weight:600">Лобби</h2>
@@ -50,6 +55,7 @@
     <script src="/static/lobby/lobby.js"></script>
     <script src="/static/lobby/lobby_chat.js"></script>
     <script src="/static/base/toast.js"></script>
+    <script src="/static/base/theme.js"></script>
     <script src="/static/base/session_ws.js"></script>
 </body>
 </html>

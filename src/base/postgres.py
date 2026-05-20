@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.pool import NullPool
 from sqlalchemy import text, select, func
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.engine import URL
 from src.base.postgres_models import (
     Base,
@@ -229,19 +230,24 @@ async def remove_friend(user_id: int, friend_id: int, session: AsyncSession) -> 
     await session.commit()
 
 @connect
-async def save_recorded_game(game_id: str, white_id: int | None, black_id: int | None, history: list[str], result: str, *, mode: str = "ranked", ranked: bool = True, session: AsyncSession) -> None:
-    game = RecordedGame(
-        id=game_id,
-        white_id=white_id,
-        black_id=black_id,
-        history=json.dumps(history),
-        result=result,
-        timestamp=datetime.now(tz=MOSCOW_TZ),
-        mode=mode,
-        ranked=ranked,
+async def save_recorded_game(game_id: str, white_id: int | None, black_id: int | None, history: list[str], result: str, *, mode: str = "ranked", ranked: bool = True, session: AsyncSession) -> bool:
+    stmt = (
+        insert(RecordedGame)
+        .values(
+            id=game_id,
+            white_id=white_id,
+            black_id=black_id,
+            history=json.dumps(history),
+            result=result,
+            timestamp=datetime.now(tz=MOSCOW_TZ),
+            mode=mode,
+            ranked=ranked,
+        )
+        .on_conflict_do_nothing(index_elements=["id"])
     )
-    session.add(game)
+    inserted = await session.execute(stmt)
     await session.commit()
+    return inserted.rowcount == 1
 
 @connect
 async def get_recorded_game(game_id: str, session: AsyncSession) -> dict | None:
