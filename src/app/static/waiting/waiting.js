@@ -36,16 +36,6 @@ async function tick() {
     seconds += 1;
     timerEl.textContent = formatTime(seconds);
 
-    if (seconds % 10 === 0) {
-        const info = await (await fetch('/api/user_status')).json();
-        if (info.timeout) {
-            cancelSearch(true);
-            clearInterval(timerInterval);
-            location.href = '/';
-            return;
-        }
-    }
-    
     if (seconds >= 600) {
         cancelSearch(true);
         clearInterval(timerInterval);

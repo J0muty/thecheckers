@@ -496,6 +496,19 @@ body {
     background: #10b981;
 }
 
+#homeButton {
+    text-decoration: none;
+    transform: none;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+#homeButton:hover,
+#homeButton:focus,
+#homeButton:active {
+    text-decoration: none;
+    transform: none;
+}
+
 .btn-blue {
     background: #3b82f6;
 }

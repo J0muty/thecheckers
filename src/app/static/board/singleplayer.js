@@ -328,7 +328,18 @@ async function autoMoveIfSingle() {
     }
 }
 
+function isFinishedUpdate(data) {
+    return Boolean(data?.status || data?.timers?.turn === 'stopped');
+}
+
+function setGameActionsVisible(visible) {
+    const item = document.getElementById('menuResign');
+    if (item) item.hidden = !visible;
+}
+
 async function handleUpdate(data) {
+    const finished = isFinishedUpdate(data);
+    const shouldShowResult = Boolean(data.status && !gameOver);
     const wasViewingHistory = viewingHistory;
     const previousHistoryLen = lastHistoryLen;
     if (!wasViewingHistory && boardState.length && data.history.length > previousHistoryLen) {
@@ -347,14 +358,15 @@ async function handleUpdate(data) {
         if (data.players.black) player2.querySelector('.player-name').textContent = data.players.black;
     }
     setActivePlayer(turn);
+    if (finished) gameOver = true;
+    setGameActionsVisible(!finished);
     startTimers();
     applyForcedState(data);
     renderBoard();
-    if (!isPerformingAutoMove) {
+    if (!gameOver && !isPerformingAutoMove) {
         await autoMoveIfSingle();
     }
-    if (data.status && !gameOver) {
-        gameOver = true;
+    if (shouldShowResult) {
         stopTimers();
         let msg = '';
         if (data.status === 'white_win') msg = 'Белые победили!';
@@ -362,6 +374,8 @@ async function handleUpdate(data) {
         else msg = 'Ничья!';
         resultText.textContent = msg;
         showModal(resultModal);
+    } else if (finished) {
+        stopTimers();
     }
 }
 
@@ -396,7 +410,7 @@ function shouldRequestBotMove(data) {
         myColor &&
         data &&
         data.timers &&
-        data.timers.turn &&
+        (data.timers.turn === 'white' || data.timers.turn === 'black') &&
         data.timers.turn !== myColor &&
         !data.status
     );
@@ -705,18 +719,13 @@ function buildWsUrl() {
 
 function setupWebSocket() {
     const ws = new WebSocket(buildWsUrl());
-    ws.addEventListener('open', () => {
-        fetchBoard();
-    });
     ws.addEventListener('message', async (e) => {
         const data = JSON.parse(e.data);
         await queueHandleUpdate(data);
+        await maybeRequestBotMove(data);
     });
     ws.addEventListener('close', () => {
-        setTimeout(() => {
-            setupWebSocket();
-            fetchBoard();
-        }, 1000);
+        setTimeout(setupWebSocket, 1000);
     });
 }
 
@@ -752,7 +761,10 @@ document.getElementById('menuHome').addEventListener('click', () => {
     window.location.href = '/';
 });
 
-document.getElementById('menuResign').addEventListener('click', () => {
+const menuResign = document.getElementById('menuResign');
+
+menuResign.addEventListener('click', () => {
+    if (gameOver) return;
     rightSidebar.classList.remove('open');
     showModal(resignModal);
 });

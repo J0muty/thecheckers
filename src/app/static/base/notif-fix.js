@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!document.querySelector('link[data-codex-responsive-polish]')) {
         const css = document.createElement('link');
         css.rel = 'stylesheet';
-        css.href = '/static/base/responsive-polish.css?v=20260518b';
+        css.href = '/static/base/responsive-polish.css';
         css.dataset.codexResponsivePolish = '1';
         document.head.appendChild(css);
     }

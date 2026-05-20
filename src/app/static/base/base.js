@@ -154,7 +154,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    if (window.globalUserId) {
+    const canUseNotifications = Boolean(
+        bell &&
+        window.globalUserId &&
+        !String(window.globalUserId).startsWith('ghost_')
+    );
+
+    if (canUseNotifications) {
         setupNotifWs();
         loadInvites();
     }
@@ -195,4 +201,4 @@ document.addEventListener('DOMContentLoaded', () => {
         if (event.key === 'Escape') closePanel();
     });
 });
-import("/static/base/notif-fix.js?v=20260518b").catch(() => {});
+import("/static/base/notif-fix.js").catch(() => {});

@@ -1381,7 +1381,7 @@ body:not(:has(.game-container))::before {
         gap: 7px;
     }
 }
-@import url("/static/base/responsive-polish.css?v=20260518b");
+@import url("/static/base/responsive-polish.css");
 
 html:has(.game-container),
 body:has(.game-container) {
@@ -1593,15 +1593,23 @@ body:has(.game-container) {
         border-radius: 18px;
         overflow-y: auto;
         transform: translateX(calc(100% + 24px));
+        z-index: 2700;
     }
 
     .right-sidebar.open {
         transform: translateX(0);
     }
 
+    .board-wrapper:has(.right-sidebar.open) .menu-toggle {
+        opacity: 0;
+        pointer-events: none;
+    }
+
     .close-sidebar {
         top: 10px;
-        left: 10px;
+        right: 10px;
+        left: auto;
+        z-index: 1;
     }
 
     .menu-list {
@@ -1775,7 +1783,8 @@ body:has(.game-container) {
 
     .close-sidebar {
         top: 7px;
-        left: 7px;
+        right: 7px;
+        left: auto;
         inline-size: 30px;
         block-size: 30px;
         font-size: 0.82rem;
@@ -1786,6 +1795,265 @@ body:has(.game-container) {
         margin: 6px 0;
         border-radius: 10px;
         font-size: 0.78rem;
+    }
+}
+
+@media (max-width: 400px) {
+    body.no-select:not(:has(.game-container)):has(.home-wrapper) .status-container {
+        position: fixed !important;
+        inset: auto max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left)) !important;
+        width: auto !important;
+        max-height: min(46dvh, 310px);
+        padding: 0;
+        gap: 6px;
+        align-items: stretch;
+        overflow-y: auto;
+        scrollbar-width: none;
+        z-index: 1800;
+    }
+
+    body.no-select:not(:has(.game-container)):has(.home-wrapper) .status-container::-webkit-scrollbar {
+        display: none;
+    }
+
+    body.no-select:not(:has(.game-container)):has(.home-wrapper) .status-box {
+        width: 100%;
+        min-width: 0;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 6px 8px;
+        padding: 10px;
+        border-width: 1px;
+        border-radius: 12px;
+    }
+
+    body.no-select:not(:has(.game-container)):has(.home-wrapper) .status-title {
+        flex: 1 1 100%;
+        min-width: 0;
+        font-size: 0.78rem;
+        line-height: 1.15;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    body.no-select:not(:has(.game-container)):has(.home-wrapper) .status-box .timer {
+        flex: 0 0 auto;
+        min-width: 56px;
+        font-size: 0.82rem;
+        line-height: 1.1;
+    }
+
+    body.no-select:not(:has(.game-container)):has(.home-wrapper) .status-box button {
+        flex: 1 1 calc(50% - 4px);
+        min-width: 0;
+        min-height: 34px;
+        padding: 6px 8px;
+        font-size: 0.78rem;
+        line-height: 1.1;
+    }
+}
+
+@media (max-width: 360px) {
+    body.no-select:not(:has(.game-container)):has(.home-wrapper) {
+        min-height: 100dvh;
+        display: flex;
+        flex-direction: column;
+    }
+
+    body.no-select:not(:has(.game-container)):has(.home-wrapper) > main {
+        flex: 1 0 auto;
+        display: flex;
+        width: 100%;
+        padding-bottom: 0 !important;
+    }
+
+    body.no-select:not(:has(.game-container)):has(.home-wrapper) .footer {
+        margin-top: auto;
+        flex-shrink: 0;
+    }
+}
+
+@media (max-width: 230px) {
+    .fancy-modal .modal-title {
+        display: none;
+    }
+}
+
+/* codex-modern-status-card-2026-05-20 */
+body.no-select:not(:has(.game-container)):has(.home-wrapper) .status-container {
+    gap: 10px;
+}
+
+body.no-select:not(:has(.game-container)):has(.home-wrapper) .status-box {
+    --status-accent: var(--accent-color);
+    position: relative;
+    width: min(360px, calc(100dvw - 24px));
+    min-width: min(300px, calc(100dvw - 24px));
+    align-items: center;
+    justify-content: flex-start;
+    gap: 10px;
+    padding: 12px;
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--status-accent) 26%, var(--border-color));
+    border-radius: 18px;
+    background:
+        linear-gradient(180deg, color-mix(in srgb, var(--surface-solid) 92%, transparent), color-mix(in srgb, var(--surface-solid) 78%, transparent)),
+        linear-gradient(135deg, color-mix(in srgb, var(--status-accent) 14%, transparent), transparent 58%);
+    box-shadow:
+        0 16px 40px rgba(15, 23, 42, 0.14),
+        inset 0 1px 0 rgba(255, 255, 255, 0.32);
+    backdrop-filter: blur(20px) saturate(150%);
+}
+
+body.no-select:not(:has(.game-container)):has(.home-wrapper) #netStatus {
+    --status-accent: #3b82f6;
+}
+
+body.no-select:not(:has(.game-container)):has(.home-wrapper) #singleStatus {
+    --status-accent: #10b981;
+}
+
+body.no-select:not(:has(.game-container)):has(.home-wrapper) #waitStatus {
+    --status-accent: #f59e0b;
+}
+
+body.no-select:not(:has(.game-container)):has(.home-wrapper) #lobbyStatus {
+    --status-accent: #14b8a6;
+}
+
+body.no-select:not(:has(.game-container)):has(.home-wrapper) .status-box::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 4px;
+    background: var(--status-accent);
+}
+
+body.no-select:not(:has(.game-container)):has(.home-wrapper) .status-title {
+    flex: 1 1 calc(100% - 104px);
+    min-width: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-color);
+    font-size: 0.88rem;
+    font-weight: 800;
+    letter-spacing: 0;
+    line-height: 1.15;
+}
+
+body.no-select:not(:has(.game-container)):has(.home-wrapper) .status-title::before {
+    content: "";
+    inline-size: 9px;
+    block-size: 9px;
+    flex: 0 0 9px;
+    border-radius: 999px;
+    background: var(--status-accent);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--status-accent) 18%, transparent);
+}
+
+body.no-select:not(:has(.game-container)):has(.home-wrapper) .status-box .timer {
+    flex: 0 0 auto;
+    min-width: 76px;
+    padding: 7px 10px;
+    border: 1px solid color-mix(in srgb, var(--status-accent) 24%, var(--border-color));
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--status-accent) 10%, var(--surface-solid));
+    color: var(--text-color);
+    font-size: 0.88rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    text-align: center;
+}
+
+body.no-select:not(:has(.game-container)):has(.home-wrapper) .status-box button {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 38px;
+    padding: 0 12px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--button-color), var(--accent-color));
+    box-shadow: 0 10px 22px color-mix(in srgb, var(--status-accent) 22%, transparent);
+    font-size: 0.82rem;
+    line-height: 1.1;
+}
+
+body.no-select:not(:has(.game-container)):has(.home-wrapper) .status-box button:hover {
+    transform: translateY(-1px);
+}
+
+body.no-select:not(:has(.game-container)):has(.home-wrapper) #netLeave,
+body.no-select:not(:has(.game-container)):has(.home-wrapper) #singleLeave,
+body.no-select:not(:has(.game-container)):has(.home-wrapper) #waitLeave,
+body.no-select:not(:has(.game-container)):has(.home-wrapper) #lobbyLeave {
+    border: 1px solid color-mix(in srgb, #ef4444 34%, var(--border-color));
+    background: color-mix(in srgb, #ef4444 9%, var(--surface-solid));
+    color: #ef4444;
+    box-shadow: none;
+}
+
+body.no-select:not(:has(.game-container)):has(.home-wrapper) #netLeave:hover,
+body.no-select:not(:has(.game-container)):has(.home-wrapper) #singleLeave:hover,
+body.no-select:not(:has(.game-container)):has(.home-wrapper) #waitLeave:hover,
+body.no-select:not(:has(.game-container)):has(.home-wrapper) #lobbyLeave:hover {
+    background: color-mix(in srgb, #ef4444 15%, var(--surface-solid));
+}
+
+@media (max-width: 400px) {
+    body.no-select:not(:has(.game-container)):has(.home-wrapper) .status-container {
+        gap: 8px;
+    }
+
+    body.no-select:not(:has(.game-container)):has(.home-wrapper) .status-box {
+        width: 100%;
+        min-width: 0;
+        gap: 9px;
+        padding: 12px 12px 12px 14px;
+        border-radius: 16px;
+    }
+
+    body.no-select:not(:has(.game-container)):has(.home-wrapper) .status-title {
+        flex: 1 1 calc(100% - 92px);
+        font-size: 0.86rem;
+        white-space: normal;
+    }
+
+    body.no-select:not(:has(.game-container)):has(.home-wrapper) .status-box .timer {
+        min-width: 72px;
+        padding: 7px 9px;
+        font-size: 0.84rem;
+    }
+
+    body.no-select:not(:has(.game-container)):has(.home-wrapper) .status-box button {
+        min-height: 36px;
+        padding-inline: 10px;
+        font-size: 0.8rem;
+    }
+}
+
+@media (max-width: 260px) {
+    body.no-select:not(:has(.game-container)):has(.home-wrapper) .status-box {
+        padding: 10px 9px 10px 11px;
+        gap: 7px;
+    }
+
+    body.no-select:not(:has(.game-container)):has(.home-wrapper) .status-title {
+        flex-basis: 100%;
+        font-size: 0.78rem;
+    }
+
+    body.no-select:not(:has(.game-container)):has(.home-wrapper) .status-box .timer {
+        flex: 1 1 100%;
+        min-width: 0;
+    }
+
+    body.no-select:not(:has(.game-container)):has(.home-wrapper) .status-box button {
+        flex-basis: 100%;
+        min-height: 34px;
+        font-size: 0.76rem;
     }
 }
 

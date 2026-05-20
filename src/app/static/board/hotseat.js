@@ -326,13 +326,23 @@ async function autoMoveIfSingle() {
     }
 }
 
+function isFinishedUpdate(data) {
+    return Boolean(data?.status || data?.timers?.turn === 'stopped');
+}
+
+function setGameActionsVisible(visible) {
+    const item = document.getElementById('menuEnd');
+    if (item) item.hidden = !visible;
+}
+
 async function handleUpdate(data) {
+    const wasGameOver = gameOver;
     const wasViewingHistory = viewingHistory;
     const previousHistoryLen = lastHistoryLen;
     if (!wasViewingHistory && boardState.length && data.history.length > previousHistoryLen) {
         await playIncomingAnimations(data.history, previousHistoryLen);
     }
-    const finished = data.status && ['white_win','black_win','draw','ended'].includes(data.status);
+    const finished = isFinishedUpdate(data);
     boardState = data.board;
     timers = data.timers;
     timerStart = Date.now();
@@ -346,6 +356,7 @@ async function handleUpdate(data) {
     }
     returnButton.style.display = 'none';
     if (finished) gameOver = true;
+    setGameActionsVisible(!finished);
     setActivePlayer(turn);
     if (!gameOver && (turn === 'white' || turn === 'black')) {
         startTimers();
@@ -357,7 +368,7 @@ async function handleUpdate(data) {
     if (!gameOver && !isPerformingAutoMove) {
         await autoMoveIfSingle();
     }
-    if (finished) {
+    if (finished && !wasGameOver) {
         let msg = '';
         if (data.status === 'white_win') msg = 'Белые победили!';
         else if (data.status === 'black_win') msg = 'Чёрные победили!';
@@ -665,7 +676,6 @@ function buildWsUrl() {
 function setupWebSocket() {
     const ws = new WebSocket(buildWsUrl());
     ws.addEventListener('message', async (e) => {
-        if (gameOver) return;
         const data = JSON.parse(e.data);
         await queueHandleUpdate(data);
     });
@@ -705,6 +715,7 @@ document.addEventListener('click', () => {
 
 function endHotseat() {
     gameOver = true;
+    setGameActionsVisible(false);
     stopTimers();
     fetch(`/api/hotseat/end/${boardId}`, { method: 'POST' }).catch(() => {});
 }
@@ -713,9 +724,13 @@ document.getElementById('menuHome').addEventListener('click', () => {
     window.location.href = '/';
 });
 
-document.getElementById('menuEnd').addEventListener('click', async () => {
+const menuEnd = document.getElementById('menuEnd');
+
+menuEnd.addEventListener('click', async () => {
+    if (gameOver) return;
     rightSidebar.classList.remove('open');
     gameOver = true;
+    setGameActionsVisible(false);
     stopTimers();
     const res = await fetch(`/api/hotseat/end/${boardId}`, { method: 'POST' });
     if (res.ok) {

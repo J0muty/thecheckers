@@ -377,9 +377,22 @@ async function autoMoveIfSingle() {
     }
 }
 
+function isFinishedUpdate(data) {
+    return Boolean(data?.status || data?.timers?.turn === 'stopped');
+}
+
+function setGameActionsVisible(visible) {
+    ['menuResign', 'menuDraw'].forEach(id => {
+        const item = document.getElementById(id);
+        if (item) item.hidden = !visible;
+    });
+}
+
 async function handleUpdate(data) {
     moveCache.clear();
     captureCache.clear();
+    const finished = isFinishedUpdate(data);
+    const shouldShowResult = Boolean(data.status && !gameOver);
     const wasViewingHistory = viewingHistory;
     const previousHistoryLen = lastHistoryLen;
     if (!wasViewingHistory && boardState.length && data.history.length > previousHistoryLen) {
@@ -397,15 +410,16 @@ async function handleUpdate(data) {
         if (data.players.black) player2.querySelector('.player-name').textContent = data.players.black;
     }
     returnButton.style.display = 'none';
+    if (finished) gameOver = true;
+    setGameActionsVisible(!finished);
     setActivePlayer(turn);
     startTimers();
     applyForcedState(data);
     renderBoard();
-    if (!isPerformingAutoMove) {
+    if (!gameOver && !isPerformingAutoMove) {
         await autoMoveIfSingle();
     }
-    if (data.status && !gameOver) {
-        gameOver = true;
+    if (shouldShowResult) {
         stopTimers();
         let msg = '';
         if (data.status === 'white_win' || data.status === 'black_win') {
@@ -438,6 +452,8 @@ async function handleUpdate(data) {
         }
         resultText.textContent = msg;
         showModal(resultModal);
+    } else if (finished) {
+        stopTimers();
     }
 }
 
@@ -699,7 +715,7 @@ function updateTimerDisplay() {
     const elapsed = (Date.now() - timerStart) / 1000;
     let w = timers.white, b = timers.black;
     if (timers.turn === 'white') w = Math.max(0, w - elapsed);
-    else b = Math.max(0, b - elapsed);
+    else if (timers.turn === 'black') b = Math.max(0, b - elapsed);
     timer1.textContent = formatTime(w);
     timer2.textContent = formatTime(b);
     if (!gameOver && (w <= 0 || b <= 0)) {
@@ -716,7 +732,7 @@ function stopTimers() {
 function startTimers() {
     clearInterval(timerInterval);
     updateTimerDisplay();
-    if (!gameOver) {
+    if (!gameOver && (timers.turn === 'white' || timers.turn === 'black')) {
         timerInterval = setInterval(updateTimerDisplay, 1000);
     }
 }
@@ -800,7 +816,11 @@ document.addEventListener('click', () => {
 document.getElementById('menuHome').addEventListener('click', () => {
     window.location.href = '/';
 });
-document.getElementById('menuResign').addEventListener('click', () => {
+const menuResign = document.getElementById('menuResign');
+const menuDraw = document.getElementById('menuDraw');
+
+menuResign.addEventListener('click', () => {
+    if (gameOver) return;
     rightSidebar.classList.remove('open');
     showModal(resignModal);
 });
@@ -817,7 +837,8 @@ confirmResignBtn.addEventListener('click', async () => {
     }
 });
 cancelResignBtn.addEventListener('click', () => hideModal(resignModal));
-document.getElementById('menuDraw').addEventListener('click', async () => {
+menuDraw.addEventListener('click', async () => {
+    if (gameOver) return;
     rightSidebar.classList.remove('open');
     const res = await fetch(`/api/draw_offer/${boardId}`, {
         method: 'POST',
