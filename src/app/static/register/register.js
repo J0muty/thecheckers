@@ -3,11 +3,14 @@ document.addEventListener('DOMContentLoaded', () => {
         toggle.addEventListener('click', () => {
             const pwd = document.getElementById('password');
             const pwd2 = document.getElementById('confirm-password');
+            if (!pwd || !pwd2) return;
             const isHidden = pwd.type === 'password';
             pwd.type = pwd2.type = isHidden ? 'text' : 'password';
             document.querySelectorAll('.toggle-password').forEach(t => {
                 t.querySelector('.eye').style.display = isHidden ? 'none' : 'inline';
                 t.querySelector('.eye-slash').style.display = isHidden ? 'inline' : 'none';
+                t.setAttribute('aria-pressed', isHidden ? 'true' : 'false');
+                t.setAttribute('aria-label', isHidden ? 'Скрыть пароль' : 'Показать пароль');
             });
         });
     });

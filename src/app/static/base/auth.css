@@ -1,0 +1,257 @@
+body.auth-page {
+    min-height: calc(var(--vh) * 100);
+    background: var(--page-bg, var(--background-color)) !important;
+}
+
+.auth-page .page {
+    min-height: calc(var(--vh) * 100);
+    display: grid;
+    place-items: center;
+    padding: clamp(16px, 5vw, 36px);
+    background: transparent;
+}
+
+.auth-layout {
+    width: min(430px, 100%);
+    display: block;
+}
+
+body.auth-page .container.auth-card {
+    position: relative;
+    width: 100%;
+    max-width: 430px;
+    margin: 0 auto;
+    padding: clamp(32px, 7vw, 42px);
+    padding-top: clamp(58px, 10vw, 66px);
+    border: 1px solid var(--border-color);
+    border-radius: 22px;
+    background: color-mix(in srgb, var(--surface-solid) 92%, transparent);
+    box-shadow: var(--shadow-md);
+    backdrop-filter: blur(16px) saturate(135%);
+}
+
+body.auth-page .back-arrow {
+    top: 18px;
+    left: 18px;
+    inline-size: 38px;
+    block-size: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border-color);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--surface-solid) 78%, transparent);
+    color: var(--secondary-text-color);
+    transition: color 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+
+body.auth-page .back-arrow:hover {
+    color: var(--accent-color);
+    border-color: color-mix(in srgb, var(--accent-color) 45%, var(--border-color));
+    background: color-mix(in srgb, var(--surface-solid) 94%, transparent);
+}
+
+.auth-heading {
+    margin: 0 0 24px;
+}
+
+body.auth-page h1 {
+    margin: 0;
+    text-align: center;
+    font-size: clamp(1.45rem, 7vw, 2rem);
+    line-height: 1.12;
+    font-weight: 800;
+}
+
+body.auth-page .auth-form,
+body.auth-page form {
+    display: grid;
+    gap: 14px;
+}
+
+body.auth-page .input-group {
+    margin: 0;
+}
+
+body.auth-page .input-group input {
+    width: 100%;
+    min-height: 52px;
+    padding: 19px 15px 7px;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 15px;
+    background: color-mix(in srgb, var(--surface-solid) 78%, transparent);
+    color: var(--text-color);
+    box-shadow: none;
+    font-size: 1rem;
+    line-height: 1.25;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+
+body.auth-page .input-group.has-toggle input {
+    padding-right: 50px;
+}
+
+body.auth-page .input-group label {
+    left: 15px;
+    max-width: calc(100% - 30px);
+    padding: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--secondary-text-color);
+    font-size: 0.95rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+body.auth-page .input-group input:focus + label,
+body.auth-page .input-group input:not(:placeholder-shown) + label {
+    top: 8px;
+    left: 15px;
+    transform: translateY(0);
+    color: var(--accent-color);
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+body.auth-page .input-group input:focus {
+    border-color: color-mix(in srgb, var(--accent-color) 72%, var(--border-color)) !important;
+    box-shadow: var(--focus-ring) !important;
+    background: color-mix(in srgb, var(--surface-solid) 94%, transparent);
+}
+
+body.auth-page .toggle-password {
+    position: absolute;
+    top: 50%;
+    right: 7px;
+    inline-size: 38px;
+    block-size: 38px;
+    min-height: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    color: var(--secondary-text-color);
+    box-shadow: none;
+    transform: translateY(-50%);
+}
+
+body.auth-page .toggle-password:hover {
+    color: var(--accent-color);
+    background: color-mix(in srgb, var(--accent-color) 9%, transparent);
+    box-shadow: none;
+    filter: none;
+    transform: translateY(-50%);
+}
+
+body.auth-page .toggle-password svg {
+    inline-size: 21px;
+    block-size: 21px;
+    stroke: currentColor;
+}
+
+body.auth-page form > button {
+    min-height: 50px;
+    margin-top: 2px;
+    padding: 10px 14px;
+    border-radius: 15px;
+    font-size: clamp(0.9rem, 3.7vw, 1rem);
+    line-height: 1.2;
+    text-align: center;
+    white-space: normal;
+}
+
+.auth-switch {
+    margin-top: 18px;
+    line-height: 1.4;
+}
+
+body.auth-page .input-error {
+    margin: 6px 2px 0;
+    font-size: 0.82rem;
+}
+
+body.auth-page .input-group input.error {
+    border-color: var(--danger-color) !important;
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--danger-color) 14%, transparent) !important;
+}
+
+body.auth-page .input-group input.error + label {
+    color: var(--danger-color);
+}
+
+@media (max-width: 420px) {
+    .auth-page .page {
+        padding: max(12px, env(safe-area-inset-top)) 10px max(16px, env(safe-area-inset-bottom));
+    }
+
+    body.auth-page .container.auth-card {
+        padding: 56px 16px 22px;
+        border-radius: 20px;
+    }
+
+    body.auth-page .back-arrow {
+        top: 14px;
+        left: 14px;
+        inline-size: 36px;
+        block-size: 36px;
+    }
+
+    body.auth-page .auth-form,
+    body.auth-page form {
+        gap: 12px;
+    }
+}
+
+@media (max-width: 300px) {
+    .auth-page .page {
+        padding: 6px;
+    }
+
+    body.auth-page .container.auth-card {
+        padding: 50px 10px 16px;
+        border-radius: 16px;
+    }
+
+    body.auth-page h1 {
+        font-size: 1.28rem;
+    }
+
+    body.auth-page .input-group input {
+        min-height: 44px;
+        padding: 16px 10px 5px;
+        font-size: 0.82rem;
+    }
+
+    body.auth-page .input-group.has-toggle input {
+        padding-right: 38px;
+    }
+
+    body.auth-page .input-group label {
+        left: 10px;
+        max-width: calc(100% - 20px);
+        font-size: 0.82rem;
+    }
+
+    body.auth-page .input-group input:focus + label,
+    body.auth-page .input-group input:not(:placeholder-shown) + label {
+        left: 10px;
+        font-size: 0.68rem;
+    }
+
+    body.auth-page .toggle-password {
+        right: 4px;
+        inline-size: 32px;
+        block-size: 32px;
+        min-height: 32px;
+    }
+
+    body.auth-page form > button {
+        min-height: 44px;
+        padding: 8px 10px;
+        font-size: 0.82rem;
+    }
+}

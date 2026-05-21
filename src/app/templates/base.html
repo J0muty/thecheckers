@@ -33,22 +33,22 @@
         {% set guest = (uid is string) and uid.startswith('ghost_') %}
         <nav class="nav">
             {% if uid and not guest %}
-                <div id="notifBell" class="notification-bell">
+                <button id="notifBell" class="notification-bell" type="button" aria-label="Оповещения" aria-expanded="false">
                     <i class="fa-solid fa-bell"></i>
                     <span id="notifCount" class="notification-count" style="display:none"></span>
-                </div>
+                </button>
                 <a href="{{ url_for('profile') }}">Профиль</a>
             {% else %}
                 <a href="{{ url_for('login') }}">Вход</a>
                 <a href="{{ url_for('register') }}">Регистрация</a>
             {% endif %}
         </nav>
-        <div id="notifPanel" class="notification-panel"></div>
     </header>
 
     <main>
         {% block content %}{% endblock %}
     </main>
+    <div id="notifPanel" class="notification-panel"></div>
 
     <footer class="footer">© 2025 TheCheckers</footer>
     <script src="/static/base/base.js"></script>
