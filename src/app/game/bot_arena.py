@@ -617,13 +617,73 @@ def _load_named_profile(name_or_path: str) -> BotProfile:
     return profile_for_difficulty(name_or_path)
 
 
-def _print_summary(report: dict[str, object], out: Path) -> None:
+def _memory_snapshot(memory: MoveMemory | None) -> dict[str, int] | None:
+    if memory is None:
+        return None
+    return {
+        "positions": memory.position_count,
+        "moves": memory.move_count,
+        "updates": memory.total_updates,
+    }
+
+
+def _memory_delta(
+    before: dict[str, int] | None,
+    after: dict[str, int] | None,
+) -> dict[str, int] | None:
+    if before is None or after is None:
+        return None
+    return {
+        "positions": after["positions"] - before["positions"],
+        "moves": after["moves"] - before["moves"],
+        "updates": after["updates"] - before["updates"],
+    }
+
+
+def _format_delta(value: int) -> str:
+    sign = "+" if value >= 0 else ""
+    return f"{sign}{value}"
+
+
+def _print_summary(
+    report: dict[str, object],
+    out: Path,
+    *,
+    memory_before: dict[str, int] | None = None,
+    memory_after: dict[str, int] | None = None,
+    pending_validation: bool = False,
+) -> None:
     summary = report["summary"]
+    score = summary.get("score", {})
+    wins = summary.get("wins", {})
+    candidate_score = float(score.get("candidate", 0.0)) if isinstance(score, dict) else 0.0
+    baseline_score = float(score.get("baseline", 0.0)) if isinstance(score, dict) else 0.0
+    if candidate_score > baseline_score:
+        better = "candidate/hardcore лучше"
+    elif baseline_score > candidate_score:
+        better = "baseline/hard лучше"
+    else:
+        better = "ровно"
+
+    print("batch summary:")
     print(f"report: {out}")
     print(f"games: {summary['games']}")
+    print(f"result: {better} ({candidate_score:g}:{baseline_score:g})")
     print(f"score_rate: {summary['score_rate']}")
-    print(f"wins: {summary['wins']}")
+    print(f"wins: {wins}")
     print(f"avg_plies: {summary['avg_plies']}")
+    delta = _memory_delta(memory_before, memory_after)
+    if delta is not None and memory_after is not None:
+        validation_note = " (pending validation)" if pending_validation else ""
+        print(
+            "learning"
+            f"{validation_note}: positions={_format_delta(delta['positions'])} "
+            f"moves={_format_delta(delta['moves'])} updates={_format_delta(delta['updates'])}"
+        )
+        print(
+            f"memory now: positions={memory_after['positions']} "
+            f"moves={memory_after['moves']} updates={memory_after['updates']}"
+        )
 
 
 def _memory_best_score(memory: MoveMemory) -> float:
@@ -713,6 +773,7 @@ def main() -> None:
     while True:
         batch += 1
         batch_start_memory = move_memory.clone() if move_memory is not None else None
+        batch_start_stats = _memory_snapshot(move_memory)
         print(
             f"batch {batch}: candidate={candidate_profile.name} baseline={baseline_profile.name} "
             f"games={args.games} depth={args.depth} time_limit={args.time_limit}",
@@ -764,18 +825,33 @@ def main() -> None:
             draw_score=args.draw_score,
             paired_openings=not args.unpaired_openings,
         )
+        batch_after_stats = _memory_snapshot(move_memory)
         report["training"] = {
             "batch": batch,
             "tune_rounds": args.tune_rounds,
             "events": events,
+            "memory_before": batch_start_stats,
+            "memory_after": batch_after_stats,
+            "memory_delta": _memory_delta(batch_start_stats, batch_after_stats),
         }
 
         out = project_path(args.out)
         write_report(report, out)
+        should_validate = (
+            move_memory is not None
+            and args.validation_games > 0
+            and batch % max(1, args.validation_interval) == 0
+        )
+        _print_summary(
+            report,
+            out,
+            memory_before=batch_start_stats,
+            memory_after=batch_after_stats,
+            pending_validation=should_validate,
+        )
         if args.save_profile:
             save_profile(candidate_profile, project_path(args.save_profile))
         if move_memory is not None:
-            should_validate = args.validation_games > 0 and batch % max(1, args.validation_interval) == 0
             if should_validate:
                 if not args.quiet:
                     print(
@@ -829,7 +905,6 @@ def main() -> None:
                     f"moves={move_memory.move_count} updates={move_memory.total_updates}",
                     flush=True,
                 )
-        _print_summary(report, out)
 
         if not args.loop:
             break
@@ -838,4 +913,7 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\ninterrupted by user; exiting cleanly", flush=True)
