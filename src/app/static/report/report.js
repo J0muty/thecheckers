@@ -2,14 +2,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('report-form');
     if (!form) return;
 
-    document.body.classList.add('no-scroll');
-
     const fileInput = document.getElementById('report-file');
+    const dropzone = document.getElementById('file-dropzone');
     const preview = document.getElementById('file-preview');
     const message = document.getElementById('report-message');
     const MAX_FILES = 5;
     const selectedFiles = [];
-    const MAX_TEXTAREA_HEIGHT = 250;
+    const objectUrls = [];
 
     const sanitize = (str) => {
         const div = document.createElement('div');
@@ -17,29 +16,52 @@ document.addEventListener('DOMContentLoaded', () => {
         return div.textContent;
     };
 
-    function clampTextareaHeight(el) {
-        el.style.height = 'auto';
-        const targetHeight = Math.min(el.scrollHeight, MAX_TEXTAREA_HEIGHT);
-        el.style.height = targetHeight + 'px';
-        el.style.overflowY = targetHeight >= MAX_TEXTAREA_HEIGHT ? 'auto' : 'hidden';
+    const formatBytes = (bytes) => {
+        if (!bytes) return '0 Б';
+        const units = ['Б', 'КБ', 'МБ'];
+        let value = bytes;
+        let unit = 0;
+        while (value >= 1024 && unit < units.length - 1) {
+            value /= 1024;
+            unit += 1;
+        }
+        return `${value.toFixed(unit ? 1 : 0)} ${units[unit]}`;
+    };
+
+    const fileKey = (file) => `${file.name}:${file.size}:${file.lastModified}`;
+
+    function syncFileInput() {
+        try {
+            const dt = new DataTransfer();
+            selectedFiles.forEach(file => dt.items.add(file));
+            fileInput.files = dt.files;
+        } catch {
+            fileInput.value = '';
+        }
     }
-    if (message) {
-        clampTextareaHeight(message);
-        message.addEventListener('input', () => clampTextareaHeight(message));
+
+    function clearObjectUrls() {
+        objectUrls.splice(0).forEach(url => URL.revokeObjectURL(url));
     }
 
     function ensureViewer() {
         let backdrop = document.getElementById('img-viewer-backdrop');
         if (backdrop) return backdrop;
+
         backdrop = document.createElement('div');
         backdrop.id = 'img-viewer-backdrop';
+
         const img = document.createElement('img');
         img.id = 'img-viewer';
+        img.alt = 'Просмотр вложения';
+
         const close = document.createElement('button');
         close.id = 'img-viewer-close';
+        close.type = 'button';
+        close.setAttribute('aria-label', 'Закрыть просмотр');
         close.innerHTML = '<i class="fa-solid fa-xmark"></i>';
-        backdrop.appendChild(img);
-        backdrop.appendChild(close);
+
+        backdrop.append(img, close);
         document.body.appendChild(backdrop);
 
         function hide() {
@@ -48,11 +70,11 @@ document.addEventListener('DOMContentLoaded', () => {
             img.src = '';
         }
 
-        backdrop.addEventListener('click', (e) => {
-            if (e.target === backdrop || e.target.closest('#img-viewer-close')) hide();
+        backdrop.addEventListener('click', (event) => {
+            if (event.target === backdrop || event.target.closest('#img-viewer-close')) hide();
         });
-        document.addEventListener('keydown', (e) => {
-            if (backdrop.style.display === 'flex' && e.key === 'Escape') hide();
+        document.addEventListener('keydown', (event) => {
+            if (backdrop.style.display === 'flex' && event.key === 'Escape') hide();
         });
 
         return backdrop;
@@ -67,71 +89,128 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function refreshPreviews() {
+        clearObjectUrls();
         preview.innerHTML = '';
+
         selectedFiles.forEach((file, index) => {
-            if (!file.type.startsWith('image/')) return;
+            const url = URL.createObjectURL(file);
+            objectUrls.push(url);
+
             const wrapper = document.createElement('div');
             wrapper.className = 'preview-image';
 
             const img = document.createElement('img');
-            img.src = URL.createObjectURL(file);
+            img.src = url;
             img.alt = file.name;
-            img.addEventListener('click', () => showImage(img.src));
+            img.addEventListener('click', () => showImage(url));
+
+            const actions = document.createElement('div');
+            actions.className = 'preview-actions';
 
             const zoom = document.createElement('button');
             zoom.type = 'button';
-            zoom.className = 'zoom-image';
-            zoom.innerHTML = '<i class="fa-solid fa-magnifying-glass-plus"></i>';
-            zoom.addEventListener('click', () => showImage(img.src));
+            zoom.className = 'preview-action zoom-image';
+            zoom.setAttribute('aria-label', `Открыть ${file.name}`);
+            zoom.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i>';
+            zoom.addEventListener('click', () => showImage(url));
 
             const remove = document.createElement('button');
             remove.type = 'button';
-            remove.className = 'remove-image';
-            remove.innerHTML = '<i class="fa-solid fa-trash"></i>';
+            remove.className = 'preview-action remove-image';
+            remove.setAttribute('aria-label', `Удалить ${file.name}`);
+            remove.innerHTML = '<i class="fa-solid fa-trash-can"></i>';
             remove.addEventListener('click', () => {
                 selectedFiles.splice(index, 1);
-                const dt = new DataTransfer();
-                selectedFiles.forEach(f => dt.items.add(f));
-                fileInput.files = dt.files;
+                syncFileInput();
                 refreshPreviews();
             });
 
-            wrapper.appendChild(img);
-            wrapper.appendChild(zoom);
-            wrapper.appendChild(remove);
+            const meta = document.createElement('div');
+            meta.className = 'preview-meta';
+            const name = document.createElement('span');
+            name.className = 'preview-name';
+            name.textContent = file.name;
+            const size = document.createElement('span');
+            size.className = 'preview-size';
+            size.textContent = formatBytes(file.size);
+            meta.append(name, size);
+
+            actions.append(zoom, remove);
+            wrapper.append(img, actions, meta);
             preview.appendChild(wrapper);
         });
     }
 
-    fileInput.addEventListener('change', () => {
-        const newFiles = Array.from(fileInput.files);
-        let added = 0;
+    function addFiles(fileList) {
+        const incoming = Array.from(fileList || []);
+        if (!incoming.length) return;
 
-        newFiles.forEach(f => {
-            if (selectedFiles.length < MAX_FILES) {
-                selectedFiles.push(f);
-                added++;
+        const known = new Set(selectedFiles.map(fileKey));
+        let added = 0;
+        let skipped = 0;
+
+        for (const file of incoming) {
+            if (!file.type.startsWith('image/')) {
+                skipped += 1;
+                continue;
             }
-        });
+            if (selectedFiles.length >= MAX_FILES) {
+                skipped += 1;
+                continue;
+            }
+            if (known.has(fileKey(file))) {
+                skipped += 1;
+                continue;
+            }
+            selectedFiles.push(file);
+            known.add(fileKey(file));
+            added += 1;
+        }
+
+        syncFileInput();
+        refreshPreviews();
 
         if (added) {
             showNotification(`Добавлено ${added} файл${added > 1 ? 'а' : ''}`);
         }
-
-        if (newFiles.length > added || selectedFiles.length > MAX_FILES) {
-            selectedFiles.splice(MAX_FILES);
-            showNotification(`Можно загрузить максимум ${MAX_FILES} изображений`, 'error');
+        if (skipped) {
+            showNotification(`Можно загрузить до ${MAX_FILES} изображений`, 'error');
         }
-        
-        const dt = new DataTransfer();
-        selectedFiles.forEach(f => dt.items.add(f));
-        fileInput.files = dt.files;
+    }
 
-        refreshPreviews();
-    });
+    fileInput.addEventListener('change', () => addFiles(fileInput.files));
 
-    form.addEventListener('submit', async e => {
-        e.preventDefault();
+    if (dropzone) {
+        dropzone.addEventListener('click', (event) => {
+            if (event.target.closest('.file-btn')) return;
+            fileInput.click();
+        });
+
+        dropzone.addEventListener('keydown', (event) => {
+            if (event.key !== 'Enter' && event.key !== ' ') return;
+            event.preventDefault();
+            fileInput.click();
+        });
+
+        ['dragenter', 'dragover'].forEach(type => {
+            dropzone.addEventListener(type, (event) => {
+                event.preventDefault();
+                dropzone.classList.add('is-dragover');
+            });
+        });
+
+        ['dragleave', 'drop'].forEach(type => {
+            dropzone.addEventListener(type, (event) => {
+                event.preventDefault();
+                dropzone.classList.remove('is-dragover');
+            });
+        });
+
+        dropzone.addEventListener('drop', (event) => addFiles(event.dataTransfer?.files));
+    }
+
+    form.addEventListener('submit', async event => {
+        event.preventDefault();
         const subject = document.getElementById('report-subject');
         const msg = sanitize(message.value.trim());
         const subj = sanitize(subject.value.trim());
@@ -150,7 +229,7 @@ document.addEventListener('DOMContentLoaded', () => {
         formData.append('email', form.email.value);
         formData.append('subject', subj);
         formData.append('message', msg);
-        selectedFiles.forEach(f => formData.append('files', f));
+        selectedFiles.forEach(file => formData.append('files', file));
 
         try {
             const res = await fetch(form.action || '/report', {
@@ -161,8 +240,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 showNotification('Сообщение отправлено');
                 form.reset();
                 selectedFiles.length = 0;
-                const dt = new DataTransfer();
-                fileInput.files = dt.files;
+                syncFileInput();
                 refreshPreviews();
             } else {
                 showNotification('Ошибка отправки', 'error');

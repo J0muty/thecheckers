@@ -4,8 +4,8 @@
     --background-color: #f3f4f6;
     --surface-color: #ffffff;
     --surface-strong: #ffffff;
-    --accent-color: #3B82F6;
-    --button-color: #2563EB;
+    --accent-color: #14b8a6;
+    --button-color: #0f766e;
     --text-color: #111827;
     --secondary-text-color: #6B7280;
     --border-color: rgba(17, 24, 39, 0.12);
@@ -86,6 +86,38 @@ body.lobby-page {
     color: var(--text-color);
     font-size: clamp(2rem, 5vw, 3rem);
     line-height: 1;
+}
+
+.lobby-header-actions {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    min-width: 0;
+}
+
+.lobby-home-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 36px;
+    padding: 0 12px;
+    border: 1px solid color-mix(in srgb, var(--accent-color) 28%, var(--border-color));
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--surface-color) 76%, transparent);
+    color: var(--text-color);
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 800;
+    white-space: nowrap;
+    transition: transform 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+}
+
+.lobby-home-btn:hover {
+    color: var(--accent-color);
+    border-color: color-mix(in srgb, var(--accent-color) 52%, var(--border-color));
+    transform: translateY(-1px);
 }
 
 .lobby-chip {
@@ -325,6 +357,31 @@ button:disabled {
     box-shadow: none;
 }
 
+.lobby-page #theme-toggle.floating-theme {
+    inline-size: 46px;
+    block-size: 46px;
+    min-inline-size: 46px;
+    min-block-size: 46px;
+    min-height: 46px;
+    padding: 0;
+    border: 1px solid var(--border-color);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--surface-strong) 86%, transparent);
+    color: var(--text-color);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.16);
+}
+
+.lobby-page #theme-toggle.floating-theme i {
+    margin: 0;
+    inline-size: 1.12rem;
+    block-size: 1.12rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.12rem;
+    line-height: 1;
+}
+
 .secondary-action {
     background: color-mix(in srgb, var(--surface-color) 78%, transparent);
     color: var(--text-color);
@@ -358,6 +415,15 @@ button:disabled {
     min-width: 0;
 }
 
+.friend-row .friend-action {
+    justify-self: end;
+    min-width: 118px;
+}
+
+.friend-action .invite-btn {
+    width: 100%;
+}
+
 .friend-name {
     overflow: hidden;
     text-overflow: ellipsis;
@@ -378,6 +444,19 @@ button:disabled {
     padding: 0 12px;
     border-radius: 12px;
     font-size: 0.84rem;
+    box-shadow: none;
+}
+
+button.invite-btn {
+    inline-size: auto;
+    block-size: auto;
+    min-width: 118px;
+    min-height: 36px;
+    padding: 0 12px;
+    border: none;
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--button-color), var(--accent-color));
+    color: #fff;
     box-shadow: none;
 }
 
@@ -553,6 +632,16 @@ input:-webkit-autofill {
         border-radius: 18px;
     }
 
+    .lobby-header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .lobby-header-actions {
+        width: 100%;
+        justify-content: space-between;
+    }
+
     .players-list,
     .radio-group,
     .lobby-actions {
@@ -596,6 +685,10 @@ input:-webkit-autofill {
     .lobby-header {
         align-items: flex-start;
         flex-direction: column;
+    }
+
+    .lobby-home-btn span {
+        display: none;
     }
 
     .player-seat {

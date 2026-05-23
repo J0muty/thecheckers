@@ -22,13 +22,14 @@ from src.base.lobby_redis import (
 )
 from src.base.postgres import get_user_login
 from src.base.redis import (
+    get_board_state,
+    get_current_timers,
     set_board_players,
     assign_user_board,
     get_lobby_chat_messages,
-    save_lobby_chat_message,
     get_user_rematch_invites,
 )
-from src.app.routers.ws_router import waiting_manager, lobby_manager, notify_manager
+from src.app.routers.ws_router import lobby_manager, notify_manager, lobby_chat_manager
 
 lobby_router = APIRouter()
 
@@ -82,6 +83,8 @@ async def lobby_page(request: Request, lobby_id: str):
     lobby = await get_lobby(lobby_id)
     if not lobby or str(user_id) not in lobby.get("players", []):
         return RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
+    if lobby.get("board_id"):
+        return RedirectResponse(url=request.url_for("board_page", board_id=lobby["board_id"]), status_code=status.HTTP_302_FOUND)
     return templates.TemplateResponse(
         "lobby.html",
         {
@@ -140,6 +143,8 @@ async def api_lobby_start(request: Request, lobby_id: str):
         host_color: str(user_id),
         other_color: others[0],
     }
+    await get_board_state(board_id)
+    await get_current_timers(board_id)
     await set_board_players(board_id, players_map)
     for uid in players_map.values():
         await assign_user_board(uid, board_id)
@@ -147,6 +152,11 @@ async def api_lobby_start(request: Request, lobby_id: str):
     await lobby_manager.broadcast(
         lobby_id, json.dumps({"type": "start", "board_id": board_id})
     )
+    for uid in players_map.values():
+        await notify_manager.broadcast(
+            uid,
+            json.dumps({"type": "lobby_start", "lobby_id": lobby_id, "board_id": board_id}),
+        )
     await broadcast_lobby_state(lobby_id)
     return JSONResponse({"board_id": board_id})
 
@@ -226,6 +236,7 @@ async def api_lobby_respond(request: Request, lobby_id: str, action: str):
         if len(lobby.get("players", [])) >= 2:
             raise HTTPException(status_code=400, detail="lobby full")
         await add_player(lobby_id, str(user_id))
+        await lobby_chat_manager.broadcast(lobby_id, json.dumps({"type": "clear"}))
         await set_invite_status(lobby_id, str(user_id), None)
         await remove_user_invite(str(user_id), lobby_id)
         await broadcast_lobby_state(lobby_id)

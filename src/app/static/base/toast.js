@@ -2,7 +2,7 @@ const TOAST_TYPES = new Set(['success', 'error', 'warning', 'info']);
 
 const TOAST_ICONS = {
     success: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>',
-    error: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+    error: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 17h.01"/></svg>',
     warning: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2.5 20.5h19L12 3z"/><path d="M12 9v5M12 17h.01"/></svg>',
     info: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 17v-6M12 7h.01"/><circle cx="12" cy="12" r="9"/></svg>',
 };
@@ -44,7 +44,7 @@ function showNotification(message, type = 'success', duration = 3200) {
     close.className = 'toast-close';
     close.type = 'button';
     close.setAttribute('aria-label', 'Закрыть уведомление');
-    close.textContent = '×';
+    close.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>';
 
     const progress = document.createElement('span');
     progress.className = 'toast-progress';
@@ -63,7 +63,7 @@ function showNotification(message, type = 'success', duration = 3200) {
         closeToast(toast);
     });
 
-    addSwipeToClose(toast, autoCloseId);
+    addSwipeToClose(toast);
 }
 
 function closeToast(toast) {
@@ -77,7 +77,7 @@ function closeToast(toast) {
     }, 260);
 }
 
-function addSwipeToClose(toast, autoCloseId) {
+function addSwipeToClose(toast) {
     let startX = 0;
     let currentX = 0;
     let dragging = false;
@@ -97,7 +97,6 @@ function addSwipeToClose(toast, autoCloseId) {
         startX = event.clientX;
         currentX = 0;
         toast.style.transition = 'none';
-        clearTimeout(autoCloseId);
         if (toast.setPointerCapture) toast.setPointerCapture(event.pointerId);
     };
 

@@ -48,6 +48,7 @@ async def add_player(lobby_id: str, user_id: str) -> None:
     if len(lobby.get("players", [])) >= 2:
         return
     if user_id not in lobby["players"]:
+        await clear_lobby_chat(lobby_id)
         lobby["players"].append(user_id)
         colors = lobby.setdefault("colors", {})
         if user_id not in colors:

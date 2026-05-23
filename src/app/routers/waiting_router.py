@@ -11,7 +11,7 @@ from src.base.redis import (
     get_waiting_time,
     waiting_timed_out,
 )
-from src.base.lobby_redis import get_user_lobby
+from src.base.lobby_redis import get_lobby, get_user_lobby
 from src.base.hotseat_redis import get_current_timers as get_hotseat_timers
 from src.base.single_redis import (
     get_current_timers as get_single_timers,
@@ -84,6 +84,16 @@ async def api_user_status(request: Request):
     board_timers = await get_board_timers(board_id, create=False) if board_id else None
     single_timers = await get_single_timers(single_game, create=False) if single_game else None
     hotseat_timers = await get_hotseat_timers(hotseat_id, create=False) if hotseat_id else None
+    if board_timers and board_timers.get("turn") == "stopped":
+        board_id = None
+        color = None
+        board_timers = None
+    lobby_state = await get_lobby(lobby_id) if lobby_id else None
+    visible_lobby_id = lobby_id if lobby_state else None
+    if board_id and lobby_state:
+        visible_lobby_id = None
+    elif lobby_state and lobby_state.get("board_id"):
+        visible_lobby_id = None
     return JSONResponse({
         "board_id": board_id,
         "color": color,
@@ -92,7 +102,7 @@ async def api_user_status(request: Request):
         "single_game_id": single_game,
         "single_color": single_color,
         "hotseat_id": hotseat_id,
-        "lobby_id": lobby_id,
+        "lobby_id": visible_lobby_id,
         "board_timers": _public_timers(board_timers),
         "single_timers": _public_timers(single_timers),
         "hotseat_timers": _public_timers(hotseat_timers),

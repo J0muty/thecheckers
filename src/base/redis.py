@@ -34,6 +34,7 @@ CHAT_PREFIX = "chats"
 LOBBY_CHAT_PREFIX = "lobby_chat"
 REMATCH_INVITES_PREFIX = "rematch_invites"
 USER_REMATCH_PREFIX = "user_rematch"
+REMATCH_REQUEST_STATE_PREFIX = "rematch_request_state"
 USER_MOVE_INPUT_MODE_PREFIX = "user_move_input_mode"
 MOVE_INPUT_MODES = {"click", "drag"}
 
@@ -210,7 +211,36 @@ async def freeze_timers(board_id: str):
         timers[turn] = max(0, timers[turn] - elapsed)
         timers["last_ts"] = now
     timers["turn"] = "stopped"
+    timers.pop("paused_turn", None)
     await redis_client.set(_timer_key(board_id), json.dumps(timers))
+    return timers
+
+
+async def pause_timers(board_id: str):
+    timers = await _read_timers(board_id, create=False)
+    if timers is None:
+        return None
+    turn = timers.get("turn")
+    if turn in ("white", "black"):
+        now = time.time()
+        elapsed = now - timers["last_ts"]
+        timers[turn] = max(0, timers[turn] - elapsed)
+        timers["paused_turn"] = turn
+        timers["turn"] = "paused"
+        timers["last_ts"] = now
+        await redis_client.set(_timer_key(board_id), json.dumps(timers))
+    return timers
+
+
+async def resume_timers(board_id: str):
+    timers = await _read_timers(board_id, create=False)
+    if timers is None:
+        return None
+    if timers.get("turn") == "paused":
+        timers["turn"] = timers.get("paused_turn") if timers.get("paused_turn") in ("white", "black") else "white"
+        timers.pop("paused_turn", None)
+        timers["last_ts"] = time.time()
+        await redis_client.set(_timer_key(board_id), json.dumps(timers))
     return timers
 
 
@@ -346,14 +376,35 @@ async def expire_board(board_id: str, delay: int = 300):
     keys = await redis_client.keys(f"{REDIS_KEY_PREFIX}:{board_id}:*")
     for key in keys:
         await redis_client.expire(key, delay)
+    await redis_client.expire(f"{REMATCH_INVITES_PREFIX}:{board_id}", delay)
+    await redis_client.expire(f"{REMATCH_REQUEST_STATE_PREFIX}:{board_id}", delay)
 
-async def set_draw_offer(board_id: str, player: str):
+async def set_draw_offer(board_id: str, player: str) -> bool:
     key = f"{REDIS_KEY_PREFIX}:{board_id}:{DRAW_OFFER_KEY_PREFIX}"
-    await redis_client.set(key, player)
+    data = {"from": player, "pending": True, "created_at": time.time()}
+    return bool(await redis_client.set(key, json.dumps(data), nx=True))
 
 async def get_draw_offer(board_id: str):
     key = f"{REDIS_KEY_PREFIX}:{board_id}:{DRAW_OFFER_KEY_PREFIX}"
-    return await redis_client.get(key)
+    raw = await redis_client.get(key)
+    if not raw:
+        return None
+    try:
+        data = json.loads(raw)
+        if isinstance(data, dict):
+            return data
+    except json.JSONDecodeError:
+        pass
+    return {"from": raw, "pending": True}
+
+async def mark_draw_offer_resolved(board_id: str):
+    key = f"{REDIS_KEY_PREFIX}:{board_id}:{DRAW_OFFER_KEY_PREFIX}"
+    offer = await get_draw_offer(board_id)
+    if not offer:
+        return
+    offer["pending"] = False
+    offer["resolved_at"] = time.time()
+    await redis_client.set(key, json.dumps(offer))
 
 async def clear_draw_offer(board_id: str):
     key = f"{REDIS_KEY_PREFIX}:{board_id}:{DRAW_OFFER_KEY_PREFIX}"
@@ -412,13 +463,37 @@ async def _read_user_rematch(user_id: str) -> dict:
 async def _write_user_rematch(user_id: str, data: dict) -> None:
     await redis_client.set(f"{USER_REMATCH_PREFIX}:{user_id}", json.dumps(data))
 
-async def add_rematch_invite(board_id: str, to_id: str, from_id: str) -> None:
+async def add_rematch_invite(board_id: str, to_id: str, from_id: str) -> bool:
+    state_key = f"{REMATCH_REQUEST_STATE_PREFIX}:{board_id}"
+    state = {
+        "from": from_id,
+        "to": to_id,
+        "status": "pending",
+        "created_at": time.time(),
+    }
+    created = await redis_client.set(state_key, json.dumps(state), nx=True)
+    if not created:
+        return False
     board_invites = await _read_rematch_invites(board_id)
     board_invites[to_id] = from_id
     await _write_rematch_invites(board_id, board_invites)
     user_invites = await _read_user_rematch(to_id)
     user_invites[board_id] = from_id
     await _write_user_rematch(to_id, user_invites)
+    return True
+
+async def mark_rematch_invite_resolved(board_id: str, status: str) -> None:
+    state_key = f"{REMATCH_REQUEST_STATE_PREFIX}:{board_id}"
+    raw = await redis_client.get(state_key)
+    if not raw:
+        return
+    try:
+        state = json.loads(raw)
+    except json.JSONDecodeError:
+        state = {}
+    state["status"] = status
+    state["resolved_at"] = time.time()
+    await redis_client.set(state_key, json.dumps(state))
 
 async def remove_rematch_invite(board_id: str, user_id: str) -> None:
     board_invites = await _read_rematch_invites(board_id)

@@ -108,6 +108,8 @@ let pendingMove = false;
 let animatingBoard = false;
 let timeoutCheckPending = false;
 let lastHistoryLen = 0;
+let drawOfferUsed = false;
+let rematchRequested = false;
 let locallyAnimatedMove = null;
 let updateQueue = Promise.resolve();
 
@@ -499,13 +501,18 @@ function isFinishedUpdate(data) {
 }
 
 function setGameActionsVisible(visible) {
-    ['menuResign', 'menuDraw'].forEach(id => {
-        const item = document.getElementById(id);
-        if (item) {
-            item.hidden = !visible;
-            item.setAttribute('aria-hidden', String(!visible));
-        }
-    });
+    const resignItem = document.getElementById('menuResign');
+    const drawItem = document.getElementById('menuDraw');
+    if (resignItem) {
+        resignItem.hidden = !visible;
+        resignItem.setAttribute('aria-hidden', String(!visible));
+    }
+    if (drawItem) {
+        drawItem.hidden = !visible;
+        drawItem.setAttribute('aria-hidden', String(!visible));
+        drawItem.classList.toggle('is-disabled', visible && drawOfferUsed);
+        drawItem.setAttribute('aria-disabled', String(visible && drawOfferUsed));
+    }
 }
 
 async function handleUpdate(data) {
@@ -519,9 +526,8 @@ async function handleUpdate(data) {
         await playIncomingAnimations(data.history, previousHistoryLen);
     }
     boardState = data.board;
-    timers = data.timers;
-    timerStart = Date.now();
-    turn = data.timers.turn;
+    if (finished) gameOver = true;
+    applyTimerSnapshot(data.timers);
     lastHistoryLen = data.history.length;
     renderHistoryProgress(data.history);
     viewingHistory = false;
@@ -530,10 +536,7 @@ async function handleUpdate(data) {
         if (data.players.black) player2.querySelector('.player-name').textContent = data.players.black;
     }
     returnButton.style.display = 'none';
-    if (finished) gameOver = true;
     setGameActionsVisible(!finished);
-    setActivePlayer(turn);
-    startTimers();
     applyForcedState(data);
     renderBoard();
     if (!gameOver && !isPerformingAutoMove) {
@@ -905,6 +908,15 @@ function setActivePlayer(p) {
     player2.classList.toggle('active', p === 'black');
 }
 
+function applyTimerSnapshot(nextTimers) {
+    if (!nextTimers) return;
+    timers = nextTimers;
+    timerStart = Date.now();
+    turn = nextTimers.turn;
+    setActivePlayer(nextTimers.turn === 'paused' ? nextTimers.paused_turn : nextTimers.turn);
+    startTimers();
+}
+
 function formatTime(t) {
     const m = Math.floor(t / 60).toString().padStart(2, '0');
     const s = Math.floor(t % 60).toString().padStart(2, '0');
@@ -965,8 +977,13 @@ function setupWebSocket() {
     ws.addEventListener('message', async (e) => {
         const data = JSON.parse(e.data);
         if (data.type === 'draw_offer') {
+            drawOfferUsed = true;
+            setGameActionsVisible(!gameOver);
+            applyTimerSnapshot(data.timers);
             if (!gameOver && data.from !== myColor) showModal(drawOfferModal);
         } else if (data.type === 'draw_declined') {
+            setGameActionsVisible(!gameOver);
+            applyTimerSnapshot(data.timers);
             if (!gameOver) showNotification('Предложение ничьи отклонено', 'error');
         } else if (data.type === 'rematch_offer') {
             if (data.from !== myColor) showModal(rematchOfferModal);
@@ -1061,14 +1078,23 @@ confirmResignBtn.addEventListener('click', async () => {
 });
 cancelResignBtn.addEventListener('click', () => hideModal(resignModal));
 menuDraw.addEventListener('click', async () => {
-    if (gameOver) return;
+    if (gameOver || drawOfferUsed) return;
     rightSidebar.classList.remove('open');
     const res = await fetch(`/api/draw_offer/${boardId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ player: myColor })
     });
-    if (res.ok) showNotification('Предложение отправлено');
+    if (res.ok) {
+        const data = await res.json().catch(() => ({}));
+        drawOfferUsed = true;
+        setGameActionsVisible(!gameOver);
+        applyTimerSnapshot(data.timers);
+        showNotification('Предложение отправлено');
+    } else {
+        const data = await res.json().catch(() => ({}));
+        showNotification(data.detail === 'draw already offered' ? 'Ничья уже предлагалась' : 'Не удалось предложить ничью', 'error');
+    }
 });
 acceptDrawBtn.addEventListener('click', () => respondDraw(true));
 declineDrawBtn.addEventListener('click', () => respondDraw(false));
@@ -1083,15 +1109,26 @@ async function respondDraw(accept) {
     if (res.ok && accept) {
         const data = await res.json();
         await queueHandleUpdate(data);
+    } else if (res.ok) {
+        const data = await res.json().catch(() => ({}));
+        applyTimerSnapshot(data.timers);
+        setGameActionsVisible(!gameOver);
     }
 }
 resultHomeBtn.addEventListener('click', () => window.location.href = '/');
 resultCloseBtn.addEventListener('click', () => hideModal(resultModal));
 if (rematchBtn) {
     rematchBtn.addEventListener('click', async () => {
+        if (rematchRequested) return;
         hideModal(resultModal);
+        rematchRequested = true;
+        rematchBtn.disabled = true;
         const res = await fetch(`/api/rematch_request/${boardId}`, { method: 'POST' });
         if (res.ok) showNotification('Запрос на реванш отправлен');
+        else {
+            const data = await res.json().catch(() => ({}));
+            showNotification(data.detail === 'rematch already requested' ? 'Реванш уже был предложен' : 'Не удалось отправить реванш', 'error');
+        }
     });
 }
 acceptRematchBtn.addEventListener('click', () => respondRematch(true));

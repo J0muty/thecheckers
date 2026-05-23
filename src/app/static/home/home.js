@@ -42,6 +42,110 @@ let currentBoardId = null;
 let currentNetTimerColor = null;
 let currentSingleTimerColor = null;
 
+function resultNotificationKey(boardId) {
+    return `resultToastShown:${boardId}`;
+}
+
+function formatEloDelta(delta) {
+    if (typeof delta !== 'number') return '';
+    if (delta > 0) return ` и получили +${delta} ELO`;
+    if (delta < 0) return ` и потеряли ${Math.abs(delta)} ELO`;
+    return ' и не потеряли ELO';
+}
+
+function buildGameResultMessage(data, color) {
+    if (!data?.status) return null;
+    const delta = color && data.rating_change ? data.rating_change[color] : undefined;
+    const eloText = formatEloDelta(delta);
+
+    if (data.status === 'draw') {
+        return `Ничья${eloText}`;
+    }
+
+    if (data.status !== 'white_win' && data.status !== 'black_win') {
+        return `Игра завершена${eloText}`;
+    }
+
+    const winner = data.status === 'white_win' ? 'white' : 'black';
+    if (color) {
+        return color === winner
+            ? `Вы выиграли${eloText}`
+            : `Вы проиграли${eloText}`;
+    }
+
+    return winner === 'white' ? 'Белые выиграли' : 'Чёрные выиграли';
+}
+
+function showHomeNotification(message, type = 'success', duration = 5200) {
+    if (typeof window.showNotification === 'function') {
+        showNotification(message, type, duration);
+        return;
+    }
+
+    let container = document.querySelector('.toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.className = 'toast-container';
+        document.body.appendChild(container);
+    }
+
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type} show`;
+    toast.style.setProperty('--toast-duration', `${duration}ms`);
+    toast.setAttribute('role', type === 'error' ? 'alert' : 'status');
+
+    const icon = document.createElement('span');
+    icon.className = 'toast-icon';
+    icon.innerHTML = type === 'error'
+        ? '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 17h.01"/></svg>'
+        : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
+
+    const body = document.createElement('span');
+    body.className = 'toast-message';
+    body.textContent = message;
+
+    const close = document.createElement('button');
+    close.className = 'toast-close';
+    close.type = 'button';
+    close.setAttribute('aria-label', 'Закрыть уведомление');
+    close.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>';
+
+    const progress = document.createElement('span');
+    progress.className = 'toast-progress';
+    progress.setAttribute('aria-hidden', 'true');
+
+    const closeToast = () => {
+        toast.classList.remove('show');
+        toast.classList.add('hide');
+        setTimeout(() => {
+            toast.remove();
+            if (!container.children.length) container.remove();
+        }, 260);
+    };
+
+    close.addEventListener('click', closeToast);
+    toast.append(icon, body, close, progress);
+    container.appendChild(toast);
+    setTimeout(closeToast, duration);
+}
+
+function showGameResultNotification(boardId, data, color) {
+    if (!boardId || !data?.status) return;
+    const key = resultNotificationKey(boardId);
+    if (sessionStorage.getItem(key) === '1') return;
+    sessionStorage.setItem(key, '1');
+
+    const message = buildGameResultMessage(data, color);
+    if (!message) return;
+
+    const myWon = color && (
+        (data.status === 'white_win' && color === 'white') ||
+        (data.status === 'black_win' && color === 'black') ||
+        data.status === 'draw'
+    );
+    showHomeNotification(message, myWon ? 'success' : 'error', 5200);
+}
+
 function buildWaitingWsUrl() {
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
     return `${proto}://${location.host}/ws/waiting/${userId}`;
@@ -122,7 +226,12 @@ function setupBoardWs(id, displayColor = null) {
     boardWs.addEventListener('message', e => {
         const d = JSON.parse(e.data);
         if (d.timers) startClock('net', netTimer, d.timers, currentNetTimerColor);
-        if (d.status) updateStatus();
+        if (d.status) {
+            showGameResultNotification(id, d, currentNetTimerColor);
+            netBox.style.display = 'none';
+            stopNetClock();
+            updateStatus();
+        }
     });
     boardWs.addEventListener('close', () => {
         boardWs = null;
@@ -169,7 +278,7 @@ async function updateStatus() {
             updateStatus();
         };
         startClock('net', netTimer, data.hotseat_timers, null);
-    } else if (data.board_id) {
+    } else if (data.board_id && data.board_timers?.turn !== 'stopped') {
         visible = true;
         netBox.style.display = 'flex';
         netTitle.textContent = 'Сетевая игра';
@@ -249,7 +358,7 @@ async function updateStatus() {
         if (waitingWs) { waitingWs.close(); waitingWs = null; }
     }
 
-    if (data.lobby_id) {
+    if (data.lobby_id && !data.board_id) {
         visible = true;
         lobbyBox.style.display = 'flex';
         lobbyReturn.onclick = () => window.location.href = `/lobby/${data.lobby_id}`;

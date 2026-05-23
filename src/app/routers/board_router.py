@@ -29,6 +29,8 @@ from src.base.redis import (
     apply_move_timer,
     apply_same_turn_timer,
     freeze_timers,
+    pause_timers,
+    resume_timers,
     get_board_state_at,
     get_board_players,
     expire_board,
@@ -38,8 +40,9 @@ from src.base.redis import (
     PLAYERS_KEY,
     set_draw_offer,
     get_draw_offer,
-    clear_draw_offer,
+    mark_draw_offer_resolved,
     add_rematch_invite,
+    mark_rematch_invite_resolved,
     remove_rematch_invite,
     get_board_rematch_invites,
     get_chain_state,
@@ -144,6 +147,7 @@ class Timers(BaseModel):
     white: float
     black: float
     turn: str
+    paused_turn: Optional[str] = None
 
 class BoardState(BaseModel):
     board: Board
@@ -217,6 +221,12 @@ async def _load_draw_state(board_id: str, history: list[str]) -> dict:
     rebuilt = rebuild_draw_state_from_history(history)
     await save_draw_state(board_id, rebuilt)
     return rebuilt
+
+
+def _public_timers(timers: dict | None) -> dict | None:
+    if timers is None:
+        return None
+    return {key: value for key, value in timers.items() if key != "last_ts"}
 
 @board_router.post("/api/frontend-log")
 async def api_frontend_log(log: FrontendLog):
@@ -607,11 +617,23 @@ async def api_draw_offer(request: Request, board_id: str, action: PlayerAction):
     if players and players.get(action.player) != str(user_id):
         raise HTTPException(status_code=403, detail="Invalid player")
     timers_check = await get_current_timers(board_id, create=False)
-    if timers_check and timers_check.get("turn") not in ("white", "black"):
+    if not timers_check:
+        raise HTTPException(status_code=400, detail="Game timer not found")
+    if timers_check.get("turn") not in ("white", "black"):
         raise HTTPException(status_code=400, detail="Game finished")
-    await set_draw_offer(board_id, action.player)
-    await board_manager.broadcast(board_id, json.dumps({"type": "draw_offer", "from": action.player}))
-    return {"status": "ok"}
+    if not await set_draw_offer(board_id, action.player):
+        raise HTTPException(status_code=409, detail="draw already offered")
+    paused_timers = await pause_timers(board_id)
+    public_timers = _public_timers(paused_timers)
+    await board_manager.broadcast(
+        board_id,
+        json.dumps({
+            "type": "draw_offer",
+            "from": action.player,
+            "timers": public_timers,
+        }),
+    )
+    return {"status": "ok", "timers": public_timers}
 
 @board_router.post("/api/draw_response/{board_id}")
 async def api_draw_response(request: Request, board_id: str, resp: DrawResponse):
@@ -623,12 +645,15 @@ async def api_draw_response(request: Request, board_id: str, resp: DrawResponse)
     players = await get_board_players(board_id)
     if players and players.get(resp.player) != str(user_id):
         raise HTTPException(status_code=403, detail="Invalid player")
-    timers_check = await get_current_timers(board_id, create=False)
-    if timers_check and timers_check.get("turn") not in ("white", "black"):
-        raise HTTPException(status_code=400, detail="Game finished")
     offer = await get_draw_offer(board_id)
-    await clear_draw_offer(board_id)
-    if resp.accept and offer and resp.player != offer:
+    if not offer or not offer.get("pending"):
+        raise HTTPException(status_code=404, detail="No pending draw offer")
+    if resp.player == offer.get("from"):
+        raise HTTPException(status_code=400, detail="Offer owner cannot respond")
+    timers_check = await get_current_timers(board_id, create=False)
+    if timers_check and timers_check.get("turn") == "stopped":
+        raise HTTPException(status_code=400, detail="Game finished")
+    if resp.accept:
         board = await get_board_state(board_id, create=False)
         history = await get_history(board_id)
         players = await get_board_players(board_id)
@@ -663,8 +688,13 @@ async def api_draw_response(request: Request, board_id: str, resp: DrawResponse)
         await board_manager.broadcast(board_id, result.json())
         return result
     else:
-        await board_manager.broadcast(board_id, json.dumps({"type": "draw_declined"}))
-        return {"status": "declined"}
+        await mark_draw_offer_resolved(board_id)
+        timers = await resume_timers(board_id)
+        await board_manager.broadcast(
+            board_id,
+            json.dumps({"type": "draw_declined", "timers": _public_timers(timers)}),
+        )
+        return {"status": "declined", "timers": _public_timers(timers)}
 
 @board_router.post("/api/check_timeout/{board_id}", response_model=MoveResult)
 async def api_check_timeout(board_id: str):
@@ -730,6 +760,9 @@ async def api_rematch_request(request: Request, board_id: str):
     players = await get_board_players(board_id)
     if not players or str(user_id) not in players.values():
         raise HTTPException(status_code=404)
+    timers = await get_current_timers(board_id, create=False)
+    if not timers or timers.get("turn") != "stopped":
+        raise HTTPException(status_code=400, detail="Game is not finished")
     opponent_id = None
     my_color = None
     for color, uid in players.items():
@@ -739,7 +772,8 @@ async def api_rematch_request(request: Request, board_id: str):
             opponent_id = uid
     if not opponent_id:
         raise HTTPException(status_code=400)
-    await add_rematch_invite(board_id, opponent_id, str(user_id))
+    if not await add_rematch_invite(board_id, opponent_id, str(user_id)):
+        raise HTTPException(status_code=409, detail="rematch already requested")
     msg = json.dumps({"type": "rematch_offer", "from": my_color})
     await board_manager.broadcast(board_id, msg)
     await notify_manager.broadcast(opponent_id, json.dumps({"type": "invite"}))
@@ -759,7 +793,10 @@ async def api_rematch_response(request: Request, board_id: str, action: str):
         raise HTTPException(status_code=404)
     await remove_rematch_invite(board_id, str(user_id))
     if action == "accept":
+        await mark_rematch_invite_resolved(board_id, "accepted")
         new_board_id = str(uuid.uuid4())
+        await get_board_state(new_board_id)
+        await get_current_timers(new_board_id)
         await set_board_players(new_board_id, players)
         for uid in players.values():
             await assign_user_board(uid, new_board_id)
@@ -774,6 +811,7 @@ async def api_rematch_response(request: Request, board_id: str, action: str):
         )
         return JSONResponse({"board_id": new_board_id})
     else:
+        await mark_rematch_invite_resolved(board_id, "declined")
         await board_manager.broadcast(board_id, json.dumps({"type": "rematch_decline"}))
         if str(user_id).isdigit():
             login = await get_user_login(int(user_id))

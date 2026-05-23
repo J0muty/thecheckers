@@ -283,6 +283,10 @@ function initNotificationPanel() {
                     window.location.href = `/board/${data.board_id}`;
                     return;
                 }
+                if (data.type === 'lobby_start') {
+                    window.location.href = `/board/${data.board_id}`;
+                    return;
+                }
                 if (data.type === 'rematch_decline') {
                     const message = data.from_login ? `${data.from_login} отклонил реванш` : 'Реванш отклонён';
                     if (typeof window.showNotification === 'function') showNotification(message, 'error');

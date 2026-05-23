@@ -311,6 +311,18 @@ body {
     transform: translateY(-2px);
 }
 
+.menu-item.is-disabled,
+.menu-item.is-disabled:hover,
+.menu-item.is-disabled:active {
+    background: color-mix(in srgb, var(--button-color) 34%, var(--surface-color));
+    color: color-mix(in srgb, var(--text-color) 58%, var(--secondary-text-color));
+    box-shadow: none;
+    cursor: not-allowed;
+    opacity: 0.82;
+    pointer-events: none;
+    transform: none;
+}
+
 .menu-item:active {
     transform: translateY(0);
 }

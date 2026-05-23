@@ -33,7 +33,14 @@
         if(ws)ws.close()
         ws=new WebSocket(buildWsUrl())
         ws.addEventListener('message',e=>{
-            try{append(JSON.parse(e.data))}catch{}
+            try{
+                const data=JSON.parse(e.data)
+                if(data.type==='clear'){
+                    messagesEl.innerHTML=''
+                    return
+                }
+                append(data)
+            }catch{}
         })
     }
     async function loadHistory(){

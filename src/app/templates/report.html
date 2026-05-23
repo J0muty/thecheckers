@@ -4,7 +4,7 @@
 <link rel="stylesheet" href="/static/profile/profile.css">
 <link rel="stylesheet" href="/static/report/report.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-<link rel="stylesheet" href="/static/base/toast.css">
+<link rel="stylesheet" href="/static/base/toast.css?v=20260523">
 {% endblock %}
 {% block content %}
 <div class="report-wrapper">
@@ -28,10 +28,17 @@
         </div>
         <div class="input-group file-group">
             <input type="file" id="report-file" name="files" accept="image/*" multiple hidden>
-            <label for="report-file" class="file-btn"><i class="fa-solid fa-image"></i> Выбрать файл</label>
+            <div id="file-dropzone" class="file-dropzone" role="button" tabindex="0" aria-label="Добавить изображения">
+                <span class="dropzone-icon"><i class="fa-solid fa-cloud-arrow-up"></i></span>
+                <span class="dropzone-copy">
+                    <strong>Перетащите изображения сюда</strong>
+                    <span>PNG, JPG, WEBP или GIF, максимум 5 файлов</span>
+                </span>
+                <label for="report-file" class="file-btn"><i class="fa-solid fa-image"></i><span>Выбрать</span></label>
+            </div>
             <div id="file-preview" class="file-preview"></div>
         </div>
-        <button type="submit" class="primary-btn">Отправить</button>
+        <button type="submit" class="primary-btn"><i class="fa-solid fa-paper-plane"></i><span>Отправить</span></button>
     </form>
 </div>
 {% endblock %}

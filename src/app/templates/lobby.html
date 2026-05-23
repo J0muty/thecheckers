@@ -8,7 +8,7 @@
     <script>if(localStorage.theme==='dark'){document.documentElement.classList.add('dark-mode')}</script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <link rel="stylesheet" href="/static/chat/chat.css">
-    <link rel="stylesheet" href="/static/base/toast.css">
+    <link rel="stylesheet" href="/static/base/toast.css?v=20260523">
     <link rel="stylesheet" href="/static/base/theme.css">
     <link rel="stylesheet" href="/static/lobby/lobby.css">
 </head>
@@ -20,7 +20,13 @@
         <main class="lobby-card">
             <header class="lobby-header">
                 <h1>Лобби</h1>
-                <span class="lobby-chip" id="playerCount">0/2</span>
+                <div class="lobby-header-actions">
+                    <a class="lobby-home-btn" href="/" aria-label="На главную">
+                        <i class="fa-solid fa-house"></i>
+                        <span>Главная</span>
+                    </a>
+                    <span class="lobby-chip" id="playerCount">0/2</span>
+                </div>
             </header>
 
             <section class="lobby-section players-section" aria-label="Игроки">
@@ -95,7 +101,7 @@
     </script>
     <script src="/static/lobby/lobby.js"></script>
     <script src="/static/lobby/lobby_chat.js"></script>
-    <script src="/static/base/toast.js"></script>
+    <script src="/static/base/toast.js?v=20260523"></script>
     <script src="/static/base/theme.js"></script>
     <script src="/static/base/session_ws.js"></script>
 </body>

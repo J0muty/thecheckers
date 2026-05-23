@@ -14,8 +14,9 @@ let currentMenu=null
 let leaving=false
 function updateRoleUi(){
     const isHost=currentHostId===userId
+    const hasFreeSeat=!lobbyInfo||lobbyInfo.player_ids.length<2
     startBtn.style.display=isHost?'inline-block':'none'
-    inviteSection.style.display=isHost?'':'none'
+    inviteSection.style.display=isHost&&hasFreeSeat?'':'none'
 }
 function renderLobbyInfo(info){
     lobbyInfo=info
@@ -62,7 +63,7 @@ function renderLobbyInfo(info){
     })
     updateRoleUi()
     startBtn.removeAttribute('disabled')
-    if(currentHostId===userId)loadFriends()
+    if(currentHostId===userId&&lobbyInfo.player_ids.length<2)loadFriends()
 }
 function buildLobbyWsUrl(id){
     const proto=location.protocol==='https:'?'wss':'ws'
@@ -70,6 +71,7 @@ function buildLobbyWsUrl(id){
 }
 function setupLobbyWs(){
     const ws=new WebSocket(buildLobbyWsUrl(lobbyId))
+    ws.addEventListener('open',()=>loadInfo())
     ws.addEventListener('message',e=>{
         try{
             const d=JSON.parse(e.data)
@@ -99,8 +101,16 @@ async function loadFriends(){
     if(res.ok){const data=await res.json();friendsData=data.friends;renderFriends()}
 }
 async function sendInvite(id){
+    if(lobbyInfo&&lobbyInfo.player_ids.length>=2){
+        showNotification('В лобби уже есть второй игрок','error')
+        return
+    }
     const res=await fetch(`/api/lobby/invite/${lobbyId}?to_id=${id}`,{method:'POST'})
-    res.ok?showNotification('Приглашение отправлено'):showNotification('Не удалось отправить приглашение','error')
+    if(res.ok)showNotification('Приглашение отправлено')
+    else{
+        const data=await res.json().catch(()=>({}))
+        showNotification(data.detail==='lobby full'?'Место в лобби уже занято':'Не удалось отправить приглашение','error')
+    }
 }
 function renderFriends(){
     friendsTable.innerHTML=''
@@ -211,6 +221,10 @@ document.querySelectorAll('input[name="color"]').forEach(r=>{
 })
 loadMoreBtn.addEventListener('click',()=>{showAllFriends=true;renderFriends()})
 hideBtn.addEventListener('click',()=>{showAllFriends=false;renderFriends()})
+window.addEventListener('focus',()=>loadInfo())
+document.addEventListener('visibilitychange',()=>{
+    if(document.visibilityState==='visible')loadInfo()
+})
 document.addEventListener('DOMContentLoaded',()=>{
     loadInfo()
     setupLobbyWs()
