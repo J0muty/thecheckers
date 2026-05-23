@@ -34,6 +34,8 @@ CHAT_PREFIX = "chats"
 LOBBY_CHAT_PREFIX = "lobby_chat"
 REMATCH_INVITES_PREFIX = "rematch_invites"
 USER_REMATCH_PREFIX = "user_rematch"
+USER_MOVE_INPUT_MODE_PREFIX = "user_move_input_mode"
+MOVE_INPUT_MODES = {"click", "drag"}
 
 logger = logging.getLogger(__name__)
 
@@ -60,6 +62,14 @@ def _chain_key(board_id: str) -> str:
 
 def _draw_key(board_id: str) -> str:
     return f"{REDIS_KEY_PREFIX}:{board_id}:{DRAW_STATE_KEY_PREFIX}"
+
+
+def normalize_move_input_mode(mode: str | None) -> str:
+    return mode if mode in MOVE_INPUT_MODES else "click"
+
+
+def _user_move_input_mode_key(user_id: str | int) -> str:
+    return f"{USER_MOVE_INPUT_MODE_PREFIX}:{user_id}"
 
 
 def _waiting_key(username: str) -> str:
@@ -236,6 +246,19 @@ async def save_draw_state(board_id: str, state: dict[str, Any] | None) -> None:
 
 async def clear_draw_state(board_id: str) -> None:
     await redis_client.delete(_draw_key(board_id))
+
+
+async def get_user_move_input_mode(user_id: str | int | None) -> str:
+    if not user_id:
+        return "click"
+    raw = await redis_client.get(_user_move_input_mode_key(user_id))
+    return normalize_move_input_mode(raw)
+
+
+async def set_user_move_input_mode(user_id: str | int, mode: str | None) -> str:
+    normalized = normalize_move_input_mode(mode)
+    await redis_client.set(_user_move_input_mode_key(user_id), normalized)
+    return normalized
 
 
 async def get_board_state_at(board_id: str, index: int) -> Board:

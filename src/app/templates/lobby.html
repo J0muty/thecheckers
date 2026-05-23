@@ -7,42 +7,83 @@
     <link rel="icon" href="/static/base/favicon.svg" type="image/svg+xml">
     <script>if(localStorage.theme==='dark'){document.documentElement.classList.add('dark-mode')}</script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <link rel="stylesheet" href="/static/lobby/lobby.css">
     <link rel="stylesheet" href="/static/chat/chat.css">
     <link rel="stylesheet" href="/static/base/toast.css">
     <link rel="stylesheet" href="/static/base/theme.css">
+    <link rel="stylesheet" href="/static/lobby/lobby.css">
 </head>
-<body>
+<body class="lobby-page">
     <button id="theme-toggle" class="theme-toggle floating-theme" type="button" aria-label="Переключить тему">
         <i class="fa-solid fa-moon" id="theme-icon"></i>
     </button>
     <div class="lobby-wrapper">
         <main class="lobby-card">
-            <h2 style="text-align:center;font-size:1.6rem;font-weight:600">Лобби</h2>
-            <ul id="players" class="players-list"></ul>
-            <form id="colorForm" class="radio-group">
-                <label><input type="radio" name="color" value="white">Белый</label>
-                <label><input type="radio" name="color" value="black">Чёрный</label>
+            <header class="lobby-header">
+                <h1>Лобби</h1>
+                <span class="lobby-chip" id="playerCount">0/2</span>
+            </header>
+
+            <section class="lobby-section players-section" aria-label="Игроки">
+                <div class="section-heading">
+                    <i class="fa-solid fa-users"></i>
+                    <h2>Игроки</h2>
+                </div>
+                <ul id="players" class="players-list"></ul>
+            </section>
+
+            <form id="colorForm" class="radio-group" aria-label="Цвет шашек">
+                <label class="color-option">
+                    <input type="radio" name="color" value="white">
+                    <span class="color-dot color-dot-white"></span>
+                    <span>Белый</span>
+                </label>
+                <label class="color-option">
+                    <input type="radio" name="color" value="black">
+                    <span class="color-dot color-dot-black"></span>
+                    <span>Чёрный</span>
+                </label>
             </form>
-            <div class="buttons">
-                <button id="startBtn" type="button">Начать игру</button>
-                <button id="leaveBtn" type="button">Покинуть</button>
+
+            <div class="buttons lobby-actions">
+                <button id="startBtn" type="button">
+                    <i class="fa-solid fa-play"></i>
+                    <span>Начать игру</span>
+                </button>
+                <button id="leaveBtn" type="button" class="secondary-action">
+                    <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                    <span>Покинуть</span>
+                </button>
             </div>
+
             <section class="invite-section">
-                <h3>Пригласить друзей</h3>
+                <div class="section-heading">
+                    <i class="fa-solid fa-user-plus"></i>
+                    <h2>Пригласить друзей</h2>
+                </div>
                 <table id="friendsTable" class="friends-table"></table>
-                <div class="buttons" style="gap:12px">
+                <div class="buttons invite-actions">
                     <button id="loadMoreBtn" type="button">Загрузить ещё</button>
                     <button id="hideBtn" type="button" style="display:none;">Скрыть</button>
                 </div>
             </section>
         </main>
         <aside id="lobbyChat" class="chat-window open lobby-chat">
-            <button class="toggle-chat" type="button">▼</button>
+            <div class="lobby-chat-header">
+                <div>
+                    <strong>Чат</strong>
+                    <span>Лобби</span>
+                </div>
+                <button class="toggle-chat" type="button" aria-label="Свернуть чат" aria-expanded="true">
+                    <i class="fa-solid fa-chevron-down"></i>
+                </button>
+            </div>
             <div class="chat-messages"></div>
             <form class="chat-form">
-                <input class="chat-input" autocomplete="off">
-                <button type="submit">Отправить</button>
+                <input class="chat-input" autocomplete="off" placeholder="Сообщение" aria-label="Сообщение">
+                <button type="submit">
+                    <i class="fa-solid fa-paper-plane"></i>
+                    <span>Отправить</span>
+                </button>
             </form>
         </aside>
     </div>

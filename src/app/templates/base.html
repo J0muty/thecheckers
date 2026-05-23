@@ -37,7 +37,10 @@
                     <i class="fa-solid fa-bell"></i>
                     <span id="notifCount" class="notification-count" style="display:none"></span>
                 </button>
-                <a href="{{ url_for('profile') }}">Профиль</a>
+                <a href="{{ url_for('profile') }}" class="profile-link" aria-label="Профиль">
+                    <i class="fa-solid fa-user" aria-hidden="true"></i>
+                    <span>Профиль</span>
+                </a>
             {% else %}
                 <a href="{{ url_for('login') }}">Вход</a>
                 <a href="{{ url_for('register') }}">Регистрация</a>

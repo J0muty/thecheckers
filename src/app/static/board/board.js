@@ -26,8 +26,62 @@ const moveCache = new Map();
 const captureCache = new Map();
 const MOVE_ANIMATION_MS = 280;
 const MOVE_CHAIN_PAUSE_MS = 60;
+const MOVE_MODE_KEY = 'checkerMoveMode';
 let moveController = null;
 let captureController = null;
+let dragState = null;
+let moveInputMode = normalizeMoveInputMode(
+    typeof window.checkerMoveMode === 'string' ? window.checkerMoveMode : readFallbackMoveInputMode()
+);
+storeMoveInputMode(moveInputMode);
+
+function normalizeMoveInputMode(mode) {
+    return mode === 'drag' ? 'drag' : 'click';
+}
+
+function readFallbackMoveInputMode() {
+    try {
+        return localStorage.getItem(MOVE_MODE_KEY);
+    } catch (_) {
+        return 'click';
+    }
+}
+
+function storeMoveInputMode(mode) {
+    window.checkerMoveMode = mode;
+    try {
+        localStorage.setItem(MOVE_MODE_KEY, mode);
+    } catch (_) {}
+}
+
+function setMoveInputMode(mode) {
+    moveInputMode = normalizeMoveInputMode(mode);
+    storeMoveInputMode(moveInputMode);
+    updateBoardInputModeClasses();
+}
+
+function getMoveInputMode() {
+    return moveInputMode;
+}
+
+function updateBoardInputModeClasses() {
+    const isDrag = getMoveInputMode() === 'drag';
+    boardElement.classList.toggle('input-drag', isDrag);
+    boardElement.classList.toggle('input-click', !isDrag);
+}
+
+function getDragEventPoint(event) {
+    return event.touches?.[0] || event.changedTouches?.[0] || event;
+}
+
+function getDragEventId(event) {
+    return event.pointerId ?? event.touches?.[0]?.identifier ?? event.changedTouches?.[0]?.identifier ?? 'mouse';
+}
+
+function isSameDragEvent(event) {
+    if (!dragState) return false;
+    return getDragEventId(event) === dragState.pointerId;
+}
 
 function toBoardCoords(r, c) {
     return myColor === 'black' ? [7 - r, 7 - c] : [r, c];
@@ -178,6 +232,28 @@ function createPieceElement(piece, boardRow) {
 function boardCell(boardRow, boardCol) {
     const [displayRow, displayCol] = fromBoardCoords(boardRow, boardCol);
     return boardElement.querySelector(`[data-row="${displayRow + 1}"][data-col="${displayCol + 1}"]`);
+}
+
+function cellToBoardCoords(cell) {
+    if (!cell) return null;
+    const row = Number(cell.dataset.row);
+    const col = Number(cell.dataset.col);
+    if (!Number.isInteger(row) || !Number.isInteger(col)) return null;
+    if (row === 0 || row === 9 || col === 0 || col === 9) return null;
+    return toBoardCoords(row - 1, col - 1);
+}
+
+function hasPossibleMove(r, c) {
+    return possibleMoves.some(m => m[0] === r && m[1] === c);
+}
+
+function canInteractWithBoard() {
+    return !gameOver &&
+        !viewingHistory &&
+        !isPerformingAutoMove &&
+        !pendingMove &&
+        !animatingBoard &&
+        (!myColor || turn === myColor);
 }
 
 function applyMoveLocal(board, start, end) {
@@ -331,6 +407,46 @@ function computeForcedPieces() {
     }
 }
 
+async function selectPieceAt(r, c) {
+    return selectPieceAtLocal(r, c);
+}
+
+function selectPieceAtLocal(r, c) {
+    if (multiCapture) {
+        if (!selected || selected.row !== r || selected.col !== c) return false;
+        renderBoard();
+        return true;
+    }
+    if (forcedPieces.length && !forcedPieces.some(p => p.row === r && p.col === c)) return false;
+
+    const piece = boardState[r]?.[c];
+    if (!piece || pieceOwner(piece) !== turn) return false;
+
+    if (forcedPieces.length > 0) {
+        const fp = forcedPieces.find(p => p.row === r && p.col === c);
+        if (!fp) return false;
+        possibleMoves = fp.moves;
+        selected = { row: r, col: c, isCapture: true };
+    } else {
+        const moves = pieceMovesLocal(boardState, r, c, turn);
+        if (!moves.length) return false;
+        possibleMoves = moves;
+        selected = { row: r, col: c, isCapture: false };
+    }
+    renderBoard();
+    return true;
+}
+
+async function clearSelectionAfterMiss() {
+    if (!multiCapture) {
+        selected = null;
+        possibleMoves = [];
+        computeForcedPieces();
+        await autoMoveIfSingle();
+    }
+    renderBoard();
+}
+
 function clearTransientState() {
     selected = null;
     possibleMoves = [];
@@ -385,7 +501,10 @@ function isFinishedUpdate(data) {
 function setGameActionsVisible(visible) {
     ['menuResign', 'menuDraw'].forEach(id => {
         const item = document.getElementById(id);
-        if (item) item.hidden = !visible;
+        if (item) {
+            item.hidden = !visible;
+            item.setAttribute('aria-hidden', String(!visible));
+        }
     });
 }
 
@@ -565,6 +684,7 @@ async function performMove(startR, startC, endR, endC, isCapture) {
 
 function renderBoard() {
     const start = performance.now();
+    updateBoardInputModeClasses();
     const frag = document.createDocumentFragment();
     const pmSet = new Set(possibleMoves.map(m => `${m[0]}-${m[1]}`));
     const fpSet = new Set(forcedPieces.map(p => `${p.row}-${p.col}`));
@@ -601,43 +721,122 @@ function renderBoard() {
 }
 
 async function onCellClick(e) {
+    if (getMoveInputMode() === 'drag') return;
     const target = e.target.closest('.square');
-    if (!target || gameOver || viewingHistory || isPerformingAutoMove || pendingMove || animatingBoard || (myColor && turn !== myColor)) return;
-    const row = +target.dataset.row, col = +target.dataset.col;
-    if (row === 0 || row === 9 || col === 0 || col === 9) return;
-    const [rDisplay, cDisplay] = [row - 1, col - 1];
-    const [r, c] = toBoardCoords(rDisplay, cDisplay);
-    if (multiCapture && !possibleMoves.some(m => m[0] === r && m[1] === c)) return;
-    const piece = boardState[r][c];
+    if (!target || !canInteractWithBoard()) return;
+    const coords = cellToBoardCoords(target);
+    if (!coords) return;
+    const [r, c] = coords;
+    if (multiCapture && !hasPossibleMove(r, c)) return;
     if (!selected) {
-        if (forcedPieces.length && !forcedPieces.some(p => p.row === r && p.col === c)) return;
-        if (!piece || pieceOwner(piece) !== turn) return;
-        if (forcedPieces.length > 0) {
-            const fp = forcedPieces.find(p => p.row === r && p.col === c);
-            if (!fp) return;
-            possibleMoves = fp.moves;
-            selected = { row: r, col: c, isCapture: true };
-        } else {
-            const moves = pieceMovesLocal(boardState, r, c, turn);
-            if (!moves.length) return;
-            possibleMoves = moves;
-            selected = { row: r, col: c, isCapture: false };
-        }
-        renderBoard();
+        await selectPieceAt(r, c);
         return;
     }
-    if (possibleMoves.some(m => m[0] === r && m[1] === c)) {
+    if (hasPossibleMove(r, c)) {
         const prev = selected;
         await performMove(prev.row, prev.col, r, c, prev.isCapture);
         return;
     }
-    if (!multiCapture) {
-        selected = null;
-        possibleMoves = [];
-        computeForcedPieces();
-        await autoMoveIfSingle();
+    await clearSelectionAfterMiss();
+}
+
+function moveDragGhost(event) {
+    if (!dragState?.ghost) return;
+    const point = getDragEventPoint(event);
+    if (!point) return;
+    const boardRect = boardElement.getBoundingClientRect();
+    dragState.ghost.style.left = `${point.clientX - boardRect.left - dragState.offsetX}px`;
+    dragState.ghost.style.top = `${point.clientY - boardRect.top - dragState.offsetY}px`;
+}
+
+function removeDragGhost() {
+    dragState?.ghost?.remove();
+    boardElement.classList.remove('dragging-piece');
+    boardElement.querySelectorAll('.piece-drag-source').forEach(el => el.classList.remove('piece-drag-source'));
+}
+
+async function onBoardPointerDown(event) {
+    const pointerKind = event.pointerType || (event.type.startsWith('touch') ? 'touch' : 'mouse');
+    const isPrimaryPointer = pointerKind !== 'mouse' || event.button === 0;
+    if (getMoveInputMode() !== 'drag' || !isPrimaryPointer || !canInteractWithBoard()) return;
+    if (event.type === 'touchstart' && event.touches?.length !== 1) return;
+    const pieceEl = event.target.closest('.piece');
+    const cell = event.target.closest('.square');
+    if (!pieceEl || !cell || !boardElement.contains(cell)) return;
+    const coords = cellToBoardCoords(cell);
+    if (!coords) return;
+    const point = getDragEventPoint(event);
+    if (!point) return;
+    const [r, c] = coords;
+    if (event.cancelable) event.preventDefault();
+    try {
+        if (event.pointerId !== undefined) boardElement.setPointerCapture(event.pointerId);
+    } catch (_) {}
+    if (!selectPieceAtLocal(r, c)) {
+        try {
+            if (event.pointerId !== undefined) boardElement.releasePointerCapture(event.pointerId);
+        } catch (_) {}
+        return;
     }
-    renderBoard();
+
+    const sourceCell = boardCell(r, c);
+    const sourcePiece = sourceCell?.querySelector('.piece');
+    if (!sourcePiece) {
+        try {
+            if (event.pointerId !== undefined) boardElement.releasePointerCapture(event.pointerId);
+        } catch (_) {}
+        return;
+    }
+
+    event.preventDefault();
+    const boardRect = boardElement.getBoundingClientRect();
+    const pieceRect = sourcePiece.getBoundingClientRect();
+    const ghost = sourcePiece.cloneNode(true);
+    ghost.classList.add('piece-drag-ghost');
+    ghost.style.width = `${pieceRect.width}px`;
+    ghost.style.height = `${pieceRect.height}px`;
+    boardElement.appendChild(ghost);
+    sourcePiece.classList.add('piece-drag-source');
+    dragState = {
+        pointerId: getDragEventId(event),
+        start: { row: r, col: c },
+        offsetX: pieceRect.width / 2,
+        offsetY: pieceRect.height / 2,
+        ghost,
+    };
+    boardElement.classList.add('dragging-piece');
+    ghost.style.left = `${point.clientX - boardRect.left - dragState.offsetX}px`;
+    ghost.style.top = `${point.clientY - boardRect.top - dragState.offsetY}px`;
+}
+
+function onBoardPointerMove(event) {
+    if (!isSameDragEvent(event)) return;
+    if (event.cancelable) event.preventDefault();
+    moveDragGhost(event);
+}
+
+async function finishBoardDrag(event, cancelled = false) {
+    if (!isSameDragEvent(event)) return;
+    if (event.cancelable) event.preventDefault();
+    const point = getDragEventPoint(event);
+    const activeDrag = dragState;
+    dragState = null;
+    try {
+        if (activeDrag.pointerId !== undefined) boardElement.releasePointerCapture(activeDrag.pointerId);
+    } catch (_) {}
+    removeDragGhost();
+
+    const target = point ? document.elementFromPoint(point.clientX, point.clientY)?.closest('.square') : null;
+    const coords = !cancelled && target && boardElement.contains(target) ? cellToBoardCoords(target) : null;
+    if (coords && hasPossibleMove(coords[0], coords[1])) {
+        await performMove(activeDrag.start.row, activeDrag.start.col, coords[0], coords[1], selected?.isCapture ?? false);
+        return;
+    }
+    await clearSelectionAfterMiss();
+}
+
+function onBoardPointerCancel(event) {
+    finishBoardDrag(event, true);
 }
 
 function updateHistory(history) {
@@ -766,9 +965,9 @@ function setupWebSocket() {
     ws.addEventListener('message', async (e) => {
         const data = JSON.parse(e.data);
         if (data.type === 'draw_offer') {
-            if (data.from !== myColor) showModal(drawOfferModal);
+            if (!gameOver && data.from !== myColor) showModal(drawOfferModal);
         } else if (data.type === 'draw_declined') {
-            showNotification('Предложение ничьи отклонено', 'error');
+            if (!gameOver) showNotification('Предложение ничьи отклонено', 'error');
         } else if (data.type === 'rematch_offer') {
             if (data.from !== myColor) showModal(rematchOfferModal);
         } else if (data.type === 'rematch_decline') {
@@ -787,6 +986,24 @@ function setupWebSocket() {
 fetchBoard();
 setupWebSocket();
 boardElement.addEventListener('click', onCellClick);
+boardElement.addEventListener('pointerdown', onBoardPointerDown);
+document.addEventListener('pointermove', onBoardPointerMove);
+document.addEventListener('pointerup', event => finishBoardDrag(event));
+document.addEventListener('pointercancel', onBoardPointerCancel);
+document.addEventListener('mousemove', onBoardPointerMove);
+document.addEventListener('mouseup', event => finishBoardDrag(event));
+if (!window.PointerEvent) {
+    boardElement.addEventListener('mousedown', onBoardPointerDown);
+    boardElement.addEventListener('touchstart', onBoardPointerDown, { passive: false });
+    document.addEventListener('touchmove', onBoardPointerMove, { passive: false });
+    document.addEventListener('touchend', event => finishBoardDrag(event), { passive: false });
+    document.addEventListener('touchcancel', onBoardPointerCancel, { passive: false });
+}
+window.addEventListener('storage', event => {
+    if (event.key === MOVE_MODE_KEY) {
+        setMoveInputMode(event.newValue);
+    }
+});
 historyList.addEventListener('click', onHistoryClick);
 returnButton.addEventListener('click', () => fetchBoard());
 
@@ -831,6 +1048,7 @@ menuResign.addEventListener('click', () => {
 });
 confirmResignBtn.addEventListener('click', async () => {
     hideModal(resignModal);
+    if (gameOver) return;
     const res = await fetch(`/api/resign/${boardId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -856,6 +1074,7 @@ acceptDrawBtn.addEventListener('click', () => respondDraw(true));
 declineDrawBtn.addEventListener('click', () => respondDraw(false));
 async function respondDraw(accept) {
     hideModal(drawOfferModal);
+    if (gameOver) return;
     const res = await fetch(`/api/draw_response/${boardId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

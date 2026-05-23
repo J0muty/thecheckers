@@ -54,7 +54,9 @@
     })
     toggleBtn.addEventListener('click',()=>{
         container.classList.toggle('collapsed')
-        toggleBtn.textContent=container.classList.contains('collapsed')?'▲':'▼'
+        const collapsed=container.classList.contains('collapsed')
+        toggleBtn.setAttribute('aria-expanded',String(!collapsed))
+        toggleBtn.innerHTML=collapsed?'<i class="fa-solid fa-chevron-up"></i>':'<i class="fa-solid fa-chevron-down"></i>'
     })
     document.addEventListener('DOMContentLoaded',loadHistory)
 })()

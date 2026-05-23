@@ -17,6 +17,7 @@
     <script>
         const boardId = "{{ board_id }}";
         const playerColor = "{{ player_color }}";
+        window.checkerMoveMode = {{ move_input_mode|default('click')|tojson }};
         window.globalSessionToken = "{{ request.session.session_token or '' }}";
     </script>
     {% block board_script %}

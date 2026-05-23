@@ -2,14 +2,78 @@ document.addEventListener('DOMContentLoaded', () => {
     const newPass = document.getElementById('new-password');
     const confirmPass = document.getElementById('confirm-password');
     const toggles = document.querySelectorAll('.toggle-password');
+    const moveModeInputs = document.querySelectorAll('input[name="move-mode"]');
+    const MOVE_MODE_KEY = 'checkerMoveMode';
+
+    function normalizeMoveMode(mode) {
+        return mode === 'drag' ? 'drag' : 'click';
+    }
+
+    function applyMoveMode(mode) {
+        const nextMode = normalizeMoveMode(mode);
+        window.checkerMoveMode = nextMode;
+        try {
+            localStorage.setItem(MOVE_MODE_KEY, nextMode);
+        } catch (_) {}
+        moveModeInputs.forEach(input => {
+            input.checked = input.value === nextMode;
+        });
+        return nextMode;
+    }
+
+    async function saveMoveMode(mode) {
+        const nextMode = normalizeMoveMode(mode);
+        const res = await fetch('/api/settings/move-input-mode', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({mode: nextMode}),
+        });
+        if (!res.ok) {
+            throw new Error('move_mode_save_failed');
+        }
+        const data = await res.json();
+        return applyMoveMode(data.mode);
+    }
+
+    if (moveModeInputs.length) {
+        let currentMoveMode = applyMoveMode(window.checkerMoveMode);
+        moveModeInputs.forEach(input => {
+            input.addEventListener('change', async () => {
+                if (!input.checked) return;
+                const previousMoveMode = currentMoveMode;
+                moveModeInputs.forEach(item => { item.disabled = true; });
+                try {
+                    currentMoveMode = await saveMoveMode(input.value);
+                    if (typeof showNotification === 'function') {
+                        showNotification('Настройка хода сохранена', 'success');
+                    }
+                } catch (error) {
+                    currentMoveMode = applyMoveMode(previousMoveMode);
+                    if (typeof showNotification === 'function') {
+                        showNotification('Не удалось сохранить настройку', 'error');
+                    }
+                } finally {
+                    moveModeInputs.forEach(item => { item.disabled = false; });
+                }
+            });
+        });
+    }
+
     toggles.forEach(toggle => {
-        toggle.addEventListener('click', () => {
+        const toggleVisibility = () => {
             const isHidden = newPass.type === 'password';
             [newPass, confirmPass].forEach(inp => { if (inp) inp.type = isHidden ? 'text' : 'password'; });
             toggles.forEach(tg => {
                 tg.querySelector('.eye').style.display = isHidden ? 'none' : 'inline';
                 tg.querySelector('.eye-slash').style.display = isHidden ? 'inline' : 'none';
+                tg.setAttribute('aria-label', isHidden ? 'Скрыть пароль' : 'Показать пароль');
             });
+        };
+        toggle.addEventListener('click', toggleVisibility);
+        toggle.addEventListener('keydown', event => {
+            if (event.key !== 'Enter' && event.key !== ' ') return;
+            event.preventDefault();
+            toggleVisibility();
         });
     });
 
@@ -22,7 +86,20 @@ document.addEventListener('DOMContentLoaded', () => {
         list.innerHTML = '';
         data.sessions.forEach(s => {
             const li = document.createElement('li');
-            li.innerHTML = `<span class="device-icon">${s.device === 'mobile' ? '📱' : '💻'}</span> ${s.browser} • ${s.city || s.ip} <button class="logout-device" data-token="${s.id}">Выйти</button>`;
+            const icon = document.createElement('span');
+            icon.className = 'device-icon';
+            icon.innerHTML = `<i class="fa-solid ${s.device === 'mobile' ? 'fa-mobile-screen-button' : 'fa-desktop'}"></i>`;
+
+            const info = document.createElement('span');
+            info.textContent = `${s.browser} • ${s.city || s.ip}`;
+
+            const button = document.createElement('button');
+            button.className = 'logout-device';
+            button.dataset.token = s.id;
+            button.type = 'button';
+            button.textContent = 'Выйти';
+
+            li.append(icon, info, button);
             list.appendChild(li);
         });
         document.querySelectorAll('.logout-device').forEach(btn => {

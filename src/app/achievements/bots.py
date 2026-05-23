@@ -1,8 +1,10 @@
 from .data import BOT_ACHIEVEMENTS
 from src.base.postgres import count_bot_results, unlock_achievement
+from src.app.game.bot_profiles import normalize_difficulty
 
 
 async def check_bot_achievements(user_id: int, difficulty: str, result: str) -> None:
+    difficulty = normalize_difficulty(difficulty)
     for ach in BOT_ACHIEVEMENTS:
         level = ach.get("level")
         if result == "win" and level == difficulty:

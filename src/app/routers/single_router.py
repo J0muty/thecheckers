@@ -43,8 +43,10 @@ from src.base.single_redis import (
     save_draw_state,
     clear_draw_state,
 )
+from src.base.redis import get_user_move_input_mode
 from src.base.postgres import record_game, save_recorded_game
 from src.app.achievements.bots import check_bot_achievements
+from src.app.game.bot_profiles import normalize_difficulty
 from src.app.utils.guest import is_guest
 
 logger = logging.getLogger(__name__)
@@ -117,7 +119,7 @@ async def _run_bot_turn(
     bot_color: str,
     human_color: str,
 ) -> MoveResult:
-    difficulty = game_difficulties.get(game_id, "easy")
+    difficulty = normalize_difficulty(game_difficulties.get(game_id, "easy"))
     bot_start_board = board
     bot_board, starts, ends = await bot_turn(board, bot_color, difficulty)
     timers = await get_current_timers(game_id, create=False) or await get_current_timers(game_id)
@@ -185,7 +187,7 @@ async def _log_game_result(game_id: str, status: str):
     else:
         return
     history = await get_history(game_id)
-    difficulty = game_difficulties.get(game_id, "easy")
+    difficulty = normalize_difficulty(game_difficulties.get(game_id, "easy"))
     white_id = int(user) if (color == "white" and str(user).isdigit()) else None
     black_id = int(user) if (color == "black" and str(user).isdigit()) else None
     saved = await save_recorded_game(
@@ -256,7 +258,7 @@ async def api_single_start(request: Request, req: StartGame):
         if existing and await game_exists(existing):
             return JSONResponse({"game_id": existing})
     game_id = str(uuid.uuid4())
-    game_difficulties[game_id] = req.difficulty
+    game_difficulties[game_id] = normalize_difficulty(req.difficulty)
     game_colors[game_id] = req.color
     await get_board_state(game_id)
     if user_id:
@@ -275,7 +277,7 @@ async def single_redirect(
             url = request.url_for("single_page", game_id=existing)
             return RedirectResponse(url)
     game_id = str(uuid.uuid4())
-    game_difficulties[game_id] = difficulty
+    game_difficulties[game_id] = normalize_difficulty(difficulty)
     game_colors[game_id] = color
     await get_board_state(game_id)
     if user_id:
@@ -291,8 +293,12 @@ async def single_page(request: Request, game_id: str):
     if game_id in {"undefined", "null", ""} or not await game_exists(game_id):
         url = request.url_for("singleplayer")
         return RedirectResponse(url)
-    difficulty = game_difficulties.get(game_id, "easy")
+    difficulty = normalize_difficulty(game_difficulties.get(game_id, "easy"))
     color = game_colors.get(game_id, "white")
+    user_id = request.session.get("user_id")
+    move_input_mode = "click"
+    if user_id and not is_guest(user_id):
+        move_input_mode = await get_user_move_input_mode(user_id)
     return templates.TemplateResponse(
         "singleplayer.html",
         {
@@ -300,6 +306,7 @@ async def single_page(request: Request, game_id: str):
             "board_id": game_id,
             "player_color": color or "",
             "difficulty": difficulty,
+            "move_input_mode": move_input_mode,
         },
     )
 
@@ -312,7 +319,7 @@ async def api_get_board(game_id: str):
     history = await get_history(game_id)
     color = game_colors.get(game_id, "white")
     if color == "black" and not history:
-        difficulty = game_difficulties.get(game_id, "easy")
+        difficulty = normalize_difficulty(game_difficulties.get(game_id, "easy"))
         start_board = board
         board, starts, ends = await bot_turn(board, "white", difficulty)
         for index, (start, end) in enumerate(zip(starts, ends)):
@@ -578,6 +585,9 @@ async def api_resign(game_id: str, req: PlayerAction):
         raise HTTPException(status_code=403, detail="Invalid player")
     if not await game_exists(game_id):
         raise HTTPException(status_code=404)
+    timers_check = await get_current_timers(game_id, create=False)
+    if timers_check and timers_check.get("turn") not in ("white", "black"):
+        raise HTTPException(status_code=400, detail="Game finished")
     board = await get_board_state(game_id, create=False)
     status = "black_win" if req.player == "white" else "white_win"
     await _log_game_result(game_id, status)

@@ -21,6 +21,7 @@
     <script>
         const boardId = "{{ board_id }}";
         const playerColor = "{{ player_color }}";
+        window.checkerMoveMode = {{ move_input_mode|default('click')|tojson }};
     </script>
     {% block board_script %}
     <script src="/static/board/hotseat.js" defer></script>

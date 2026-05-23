@@ -301,6 +301,11 @@ body {
     cursor: pointer;
 }
 
+.menu-item[hidden],
+.right-sidebar [hidden] {
+    display: none !important;
+}
+
 .menu-item:hover {
     background: var(--accent-color);
     transform: translateY(-2px);
@@ -356,6 +361,35 @@ body {
     transition: transform 0.2s ease, box-shadow 0.2s ease, background-blend-mode 0.2s ease;
     overflow: hidden;
     filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));
+}
+
+.board-grid.input-drag {
+    touch-action: none;
+}
+
+.board-grid.input-drag .piece {
+    cursor: grab;
+    touch-action: none;
+}
+
+.board-grid.dragging-piece,
+.board-grid.dragging-piece .piece {
+    cursor: grabbing;
+}
+
+.piece.piece-drag-source {
+    opacity: 0.18;
+}
+
+.piece.piece-drag-ghost {
+    position: absolute;
+    z-index: 40;
+    margin: 0;
+    pointer-events: none;
+    transform: rotateX(15deg) scale(1.08);
+    filter: drop-shadow(0 14px 18px rgba(0,0,0,0.34));
+    transition: none;
+    will-change: left, top;
 }
 
 .piece.piece-moving-source {

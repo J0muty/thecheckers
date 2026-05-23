@@ -18,6 +18,7 @@ from src.base.redis import (
     get_user_hotseat,
     clear_user_hotseat,
     cancel_waiting,
+    get_user_move_input_mode,
 )
 from src.base.hotseat_redis import (
     clear_chain_state,
@@ -183,9 +184,17 @@ async def hotseat_page(request: Request, board_id: str):
         await clear_user_hotseat(str(session_user))
     if session_user and not finished:
         await assign_user_hotseat(str(session_user), board_id)
+    move_input_mode = "click"
+    if session_user and not is_guest(session_user):
+        move_input_mode = await get_user_move_input_mode(session_user)
     return templates.TemplateResponse(
         "hotseat.html",
-        {"request": request, "board_id": board_id, "player_color": ""},
+        {
+            "request": request,
+            "board_id": board_id,
+            "player_color": "",
+            "move_input_mode": move_input_mode,
+        },
     )
 
 
@@ -416,6 +425,8 @@ async def api_hotseat_check_timeout(board_id: str):
 async def api_hotseat_end(request: Request, board_id: str):
     if not await game_exists(board_id):
         raise HTTPException(status_code=404)
+    if await is_finished(board_id):
+        raise HTTPException(status_code=400, detail="Game finished")
     board = await get_board_state(board_id, create=False)
     history = await get_history(board_id)
     await _log_game_result(board_id, "ended")
@@ -435,6 +446,8 @@ async def api_hotseat_end(request: Request, board_id: str):
 async def api_hotseat_draw(request: Request, board_id: str):
     if not await game_exists(board_id):
         raise HTTPException(status_code=404)
+    if await is_finished(board_id):
+        raise HTTPException(status_code=400, detail="Game finished")
     board = await get_board_state(board_id, create=False)
     history = await get_history(board_id)
     await _log_game_result(board_id, "draw")

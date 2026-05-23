@@ -18,6 +18,7 @@ from src.base.postgres_models import (
 )
 from src.app.achievements.data import ALL_ACHIEVEMENTS
 from src.app.game.count_and_rang import update_elo, calculate_rank
+from src.app.game.bot_profiles import PROFILE_ALIASES, normalize_difficulty
 from src.app.utils.security import hash_password, verify_password
 from src.settings.config import MOSCOW_TZ, db_user, db_password, db_host, db_port, db_name
 
@@ -314,10 +315,16 @@ async def get_user_history(user_id: int, session: AsyncSession, offset: int = 0,
 
 @connect
 async def count_bot_results(user_id: int, difficulty: str, result: str, session: AsyncSession) -> int:
-    mode = f"single_{difficulty}"
+    normalized = normalize_difficulty(difficulty)
+    modes = {f"single_{normalized}", f"single_{difficulty}"}
+    modes.update(
+        f"single_{alias}"
+        for alias, target in PROFILE_ALIASES.items()
+        if target == normalized
+    )
     stmt = select(func.count()).select_from(GameHistory).where(
         GameHistory.user_id == user_id,
-        GameHistory.mode == mode,
+        GameHistory.mode.in_(modes),
         GameHistory.result == result,
     )
     q = await session.execute(stmt)
@@ -395,7 +402,8 @@ async def ensure_achievements(achievements: list[dict], session: AsyncSession) -
         q = await session.execute(
             select(Achievement).where(Achievement.code == ach["code"])
         )
-        if q.scalar_one_or_none() is None:
+        obj = q.scalar_one_or_none()
+        if obj is None:
             obj = Achievement(
                 code=ach["code"],
                 title=ach["title"],
@@ -403,6 +411,10 @@ async def ensure_achievements(achievements: list[dict], session: AsyncSession) -
                 icon=ach["icon"],
             )
             session.add(obj)
+        else:
+            obj.title = ach["title"]
+            obj.description = ach["desc"]
+            obj.icon = ach["icon"]
     await session.commit()
 
 
@@ -445,14 +457,19 @@ async def get_user_achievements(user_id: int, session: AsyncSession) -> list[str
 
 @connect
 async def get_achievements(session: AsyncSession) -> list[dict]:
-    result = await session.execute(select(Achievement))
+    canonical_codes = [ach["code"] for ach in ALL_ACHIEVEMENTS]
+    result = await session.execute(
+        select(Achievement).where(Achievement.code.in_(canonical_codes))
+    )
     achievements = result.scalars().all()
+    by_code = {achievement.code: achievement for achievement in achievements}
     return [
         {
-            "code": a.code,
-            "title": a.title,
-            "desc": a.description,
-            "icon": a.icon,
+            "code": code,
+            "title": by_code[code].title,
+            "desc": by_code[code].description,
+            "icon": by_code[code].icon,
         }
-        for a in achievements
+        for code in canonical_codes
+        if code in by_code
     ]

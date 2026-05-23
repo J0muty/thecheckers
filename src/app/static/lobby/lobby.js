@@ -5,6 +5,7 @@ const friendsTable=document.getElementById('friendsTable')
 const loadMoreBtn=document.getElementById('loadMoreBtn')
 const hideBtn=document.getElementById('hideBtn')
 const inviteSection=document.querySelector('.invite-section')
+const playerCount=document.getElementById('playerCount')
 let currentHostId=typeof hostId!=='undefined'?hostId:null
 let lobbyInfo=null
 let friendsData=[]
@@ -14,26 +15,40 @@ let leaving=false
 function updateRoleUi(){
     const isHost=currentHostId===userId
     startBtn.style.display=isHost?'inline-block':'none'
-    inviteSection.style.display=isHost?'flex':'none'
+    inviteSection.style.display=isHost?'':'none'
 }
 function renderLobbyInfo(info){
     lobbyInfo=info
     currentHostId=lobbyInfo.host
     if(lobbyInfo.board_id){window.location.href=`/board/${lobbyInfo.board_id}`;return}
     playersList.innerHTML=''
+    if(playerCount)playerCount.textContent=`${lobbyInfo.player_ids.length}/2`
     lobbyInfo.players.forEach((name,idx)=>{
         const uid=lobbyInfo.player_ids[idx]
         const color=lobbyInfo.colors?lobbyInfo.colors[uid]:null
         const li=document.createElement('li')
+        li.className='player-seat'
+        li.dataset.playerId=uid
+        if(uid===currentHostId)li.classList.add('host')
+        const avatar=document.createElement('span')
+        avatar.className='player-avatar'
+        avatar.textContent=(name||'?').slice(0,1).toUpperCase()
+        li.appendChild(avatar)
+        const meta=document.createElement('span')
+        meta.className='player-meta'
+        const nameSpan=document.createElement('strong')
+        nameSpan.textContent=name
+        const colorSpan=document.createElement('small')
+        colorSpan.textContent=color?`${color==='white'?'Белый':'Чёрный'}`:'Цвет не выбран'
+        colorSpan.className=color?`color-label ${color}`:'color-label empty'
+        meta.append(nameSpan,colorSpan)
+        li.appendChild(meta)
         if(uid===currentHostId){
             const crown=document.createElement('span')
             crown.className='crown'
             crown.innerHTML='<i class="fa-solid fa-crown"></i>'
             li.appendChild(crown)
         }
-        const nameSpan=document.createElement('span')
-        nameSpan.textContent=color?`${name} (${color==='white'?'Белый':'Чёрный'})`:name
-        li.appendChild(nameSpan)
         if(currentHostId===userId&&uid!==userId){
             li.style.cursor='pointer'
             li.addEventListener('click',e=>{e.stopPropagation();showPlayerMenu(li,uid)})
@@ -90,11 +105,23 @@ async function sendInvite(id){
 function renderFriends(){
     friendsTable.innerHTML=''
     const list=showAllFriends?friendsData:friendsData.slice(0,5)
+    if(!list.length){
+        const tr=document.createElement('tr')
+        tr.className='friend-row friend-empty'
+        const td=document.createElement('td')
+        td.colSpan=2
+        td.textContent='Друзей пока нет'
+        tr.appendChild(td)
+        friendsTable.appendChild(tr)
+    }
     list.forEach(f=>{
         const tr=document.createElement('tr')
+        tr.className='friend-row'
         const nameTd=document.createElement('td')
+        nameTd.className='friend-name'
         nameTd.textContent=f.login
         const btnTd=document.createElement('td')
+        btnTd.className='friend-action'
         btnTd.style.flex='0 0 auto'
         const btn=document.createElement('button')
         btn.className='invite-btn'

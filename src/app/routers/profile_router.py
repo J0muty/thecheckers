@@ -29,7 +29,13 @@ from src.app.utils.session_manager import (
     delete_session,
     delete_all_sessions,
 )
-from src.base.redis import redis_client, CHAT_PREFIX, get_user_chats
+from src.base.redis import (
+    redis_client,
+    CHAT_PREFIX,
+    get_user_chats,
+    get_user_move_input_mode,
+    set_user_move_input_mode,
+)
 from src.base.lobby_redis import (
     get_user_lobby,
     remove_player,
@@ -37,6 +43,7 @@ from src.base.lobby_redis import (
     remove_user_invite,
 )
 from src.app.utils.totp import generate_secret, build_uri, verify_code
+from src.app.utils.guest import is_guest
 
 profile_router = APIRouter()
 
@@ -141,10 +148,42 @@ async def api_logout_all(request: Request):
 @profile_router.get("/profile/settings", response_class=HTMLResponse, name="settings")
 async def settings(request: Request):
     user_id = request.session.get("user_id")
-    if not user_id:
+    if not user_id or is_guest(user_id):
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     info = await get_2fa_info(int(user_id))
-    return templates.TemplateResponse("settings.html", {"request": request, "twofa_enabled": info["enabled"]})
+    move_input_mode = await get_user_move_input_mode(user_id)
+    return templates.TemplateResponse(
+        "settings.html",
+        {
+            "request": request,
+            "twofa_enabled": info["enabled"],
+            "move_input_mode": move_input_mode,
+        },
+    )
+
+
+@profile_router.get("/api/settings/move-input-mode")
+async def api_get_move_input_mode(request: Request):
+    user_id = request.session.get("user_id")
+    if not user_id or is_guest(user_id):
+        return JSONResponse({"error": "unauthorized"}, status_code=status.HTTP_401_UNAUTHORIZED)
+    mode = await get_user_move_input_mode(user_id)
+    return JSONResponse({"mode": mode})
+
+
+@profile_router.post("/api/settings/move-input-mode")
+async def api_set_move_input_mode(request: Request):
+    user_id = request.session.get("user_id")
+    if not user_id or is_guest(user_id):
+        return JSONResponse({"error": "unauthorized"}, status_code=status.HTTP_401_UNAUTHORIZED)
+    try:
+        data = await request.json()
+        requested_mode = data.get("mode")
+    except Exception:
+        form = await request.form()
+        requested_mode = form.get("mode")
+    mode = await set_user_move_input_mode(user_id, requested_mode)
+    return JSONResponse({"mode": mode})
 
 @profile_router.get("/api/stats")
 async def api_stats(request: Request):

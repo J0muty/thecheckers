@@ -48,6 +48,7 @@ from src.base.redis import (
     get_draw_state,
     save_draw_state,
     clear_draw_state,
+    get_user_move_input_mode,
 )
 from src.base.lobby_redis import clear_lobby_board
 from src.app.game.game_logic import (
@@ -249,6 +250,9 @@ async def board_page(request: Request, board_id: str):
         and str(players.get("white", "")).isdigit()
         and str(players.get("black", "")).isdigit()
     )
+    move_input_mode = "click"
+    if session_user and not is_guest(session_user):
+        move_input_mode = await get_user_move_input_mode(session_user)
     return templates.TemplateResponse(
         "board.html",
         {
@@ -257,6 +261,7 @@ async def board_page(request: Request, board_id: str):
             "player_color": color,
             "api_base": "/api",
             "ranked_game": ranked_game,
+            "move_input_mode": move_input_mode,
         },
     )
 
@@ -546,6 +551,9 @@ async def api_resign(request: Request, board_id: str, action: PlayerAction):
     players = await get_board_players(board_id)
     if players and players.get(action.player) != str(user_id):
         raise HTTPException(status_code=403, detail="Invalid player")
+    timers_check = await get_current_timers(board_id, create=False)
+    if timers_check and timers_check.get("turn") not in ("white", "black"):
+        raise HTTPException(status_code=400, detail="Game finished")
     board = await get_board_state(board_id, create=False)
     history = await get_history(board_id)
     rating_change = None
@@ -598,6 +606,9 @@ async def api_draw_offer(request: Request, board_id: str, action: PlayerAction):
     players = await get_board_players(board_id)
     if players and players.get(action.player) != str(user_id):
         raise HTTPException(status_code=403, detail="Invalid player")
+    timers_check = await get_current_timers(board_id, create=False)
+    if timers_check and timers_check.get("turn") not in ("white", "black"):
+        raise HTTPException(status_code=400, detail="Game finished")
     await set_draw_offer(board_id, action.player)
     await board_manager.broadcast(board_id, json.dumps({"type": "draw_offer", "from": action.player}))
     return {"status": "ok"}
@@ -612,6 +623,9 @@ async def api_draw_response(request: Request, board_id: str, resp: DrawResponse)
     players = await get_board_players(board_id)
     if players and players.get(resp.player) != str(user_id):
         raise HTTPException(status_code=403, detail="Invalid player")
+    timers_check = await get_current_timers(board_id, create=False)
+    if timers_check and timers_check.get("turn") not in ("white", "black"):
+        raise HTTPException(status_code=400, detail="Game finished")
     offer = await get_draw_offer(board_id)
     await clear_draw_offer(board_id)
     if resp.accept and offer and resp.player != offer:
