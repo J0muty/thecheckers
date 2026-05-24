@@ -255,6 +255,10 @@ input:autofill{
 }
 
 @media (max-width: 260px) {
+    .profile-topbar-wallet {
+        display: none;
+    }
+
     .profile-wallet-pill {
         width: 30px;
         min-width: 30px;

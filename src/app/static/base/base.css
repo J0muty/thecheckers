@@ -189,6 +189,10 @@ body.no-select textarea {
     flex: 0 0 auto;
 }
 
+.profile-link {
+    gap: 6px;
+}
+
 .nav a:hover { color: var(--accent-color); }
 
 .notification-bell {

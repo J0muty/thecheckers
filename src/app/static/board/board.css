@@ -14,6 +14,9 @@
     --gap-size: 12px;
     --font-base: 1rem;
     --my-move-color: #a855f7;
+    --opponent-move-color: var(--text-color);
+    --history-active-color: #2dd4bf;
+    --history-active-bg: rgba(20, 184, 166, 0.2);
 }
 
 .dark-mode {
@@ -24,6 +27,9 @@
     --secondary-text-color: #9CA3AF;
     --accent-color: #3B82F6;
     --my-move-color: #a855f7;
+    --opponent-move-color: #f8fafc;
+    --history-active-color: #5eead4;
+    --history-active-bg: rgba(20, 184, 166, 0.24);
 }
 
 * {
@@ -191,13 +197,17 @@ body {
     color: var(--my-move-color);
 }
 
+.history-list li.opponent-move {
+    color: var(--opponent-move-color);
+}
+
 .history-list li.active-history {
-    background: rgba(59,130,246,0.15);
-    color: var(--accent-color);
+    background: var(--history-active-bg);
+    color: var(--history-active-color);
 }
 
 .dark-mode .history-list li.active-history {
-    background: rgba(59,130,246,0.25);
+    background: var(--history-active-bg);
 }
 
 .history-list li:last-child {

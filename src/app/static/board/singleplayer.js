@@ -1,5 +1,6 @@
 const boardElement = document.getElementById('board');
 const historyList = document.getElementById('historyList');
+const historyScroller = historyList?.closest('.history-wrapper') || historyList;
 const timer1 = document.getElementById('timer1');
 const timer2 = document.getElementById('timer2');
 const player1 = document.querySelector('.player1');
@@ -18,6 +19,8 @@ const myColor = typeof playerColor !== 'undefined' && playerColor ? playerColor 
 const MOVE_ANIMATION_MS = 280;
 const MOVE_CHAIN_PAUSE_MS = 60;
 const MOVE_MODE_KEY = 'checkerMoveMode';
+const HISTORY_SCROLL_TOLERANCE = 8;
+const HISTORY_SCROLL_SETTLE_MS = 420;
 let dragState = null;
 let moveInputMode = normalizeMoveInputMode(
     typeof window.checkerMoveMode === 'string' ? window.checkerMoveMode : readFallbackMoveInputMode()
@@ -99,6 +102,10 @@ let pendingBotMove = false;
 let animatingBoard = false;
 let timeoutCheckPending = false;
 let lastHistoryLen = 0;
+let lastRenderedHistoryCount = 0;
+let shouldFollowHistory = true;
+let isProgrammaticHistoryScroll = false;
+let programmaticHistoryScrollTimer = null;
 let locallyAnimatedMove = null;
 let updateQueue = Promise.resolve();
 
@@ -195,6 +202,21 @@ function cloneBoard(board) {
     return board.map(row => [...row]);
 }
 
+function createInitialBoardLocal() {
+    const board = Array.from({ length: 8 }, () => Array(8).fill(null));
+    for (let row = 0; row < 3; row++) {
+        for (let col = 0; col < 8; col++) {
+            if ((row + col) % 2 === 1) board[row][col] = 'b';
+        }
+    }
+    for (let row = 5; row < 8; row++) {
+        for (let col = 0; col < 8; col++) {
+            if ((row + col) % 2 === 1) board[row][col] = 'w';
+        }
+    }
+    return board;
+}
+
 function parseMoveNotation(move) {
     const [startStr, endStr] = move.split('->');
     return {
@@ -287,8 +309,56 @@ function applyMoveLocal(board, start, end) {
     return { board: nextBoard, capturedPositions };
 }
 
+function historyMoveOwners(history) {
+    let replayBoard = createInitialBoardLocal();
+    return history.map(move => {
+        const { start, end } = parseMoveNotation(move);
+        const piece = replayBoard[start[0]]?.[start[1]];
+        const owner = piece ? pieceOwner(piece) : null;
+        replayBoard = applyMoveLocal(replayBoard, start, end).board;
+        return owner;
+    });
+}
+
 function wait(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function isHistoryScrolledToEnd() {
+    if (!historyScroller) return true;
+    const maxLeft = Math.max(0, historyScroller.scrollWidth - historyScroller.clientWidth);
+    const maxTop = Math.max(0, historyScroller.scrollHeight - historyScroller.clientHeight);
+    return maxLeft - historyScroller.scrollLeft <= HISTORY_SCROLL_TOLERANCE &&
+        maxTop - historyScroller.scrollTop <= HISTORY_SCROLL_TOLERANCE;
+}
+
+function scrollHistoryToLatest({ smooth = true } = {}) {
+    if (!historyScroller) return;
+    shouldFollowHistory = true;
+    isProgrammaticHistoryScroll = true;
+    clearTimeout(programmaticHistoryScrollTimer);
+    requestAnimationFrame(() => {
+        historyScroller.scrollTo({
+            left: historyScroller.scrollWidth,
+            top: historyScroller.scrollHeight,
+            behavior: smooth ? 'smooth' : 'auto',
+        });
+        programmaticHistoryScrollTimer = setTimeout(() => {
+            isProgrammaticHistoryScroll = false;
+            shouldFollowHistory = isHistoryScrolledToEnd();
+        }, smooth ? HISTORY_SCROLL_SETTLE_MS : 0);
+    });
+}
+
+function updateHistoryAutoFollow() {
+    if (isProgrammaticHistoryScroll) return;
+    shouldFollowHistory = isHistoryScrolledToEnd();
+}
+
+function handleHistoryUserIntent() {
+    isProgrammaticHistoryScroll = false;
+    clearTimeout(programmaticHistoryScrollTimer);
+    shouldFollowHistory = isHistoryScrolledToEnd();
 }
 
 function queueHandleUpdate(data) {
@@ -851,20 +921,30 @@ function onBoardPointerCancel(event) {
 }
 
 function updateHistory(history) {
+    const previousRenderedCount = lastRenderedHistoryCount;
+    const shouldScrollAfterRender = shouldFollowHistory && history.length > previousRenderedCount;
+    const moveOwners = historyMoveOwners(history);
     historyList.innerHTML = '';
     history.forEach((m, i) => {
         const li = document.createElement('li');
         li.textContent = displayMove(m);
         li.dataset.index = i + 1;
         li.addEventListener('click', onHistoryClick);
-        if (myColor && ((myColor === 'white' && i % 2 === 0) || (myColor === 'black' && i % 2 === 1))) {
+        const isOwnMove = myColor && moveOwners[i] === myColor;
+        if (isOwnMove) {
             li.classList.add('my-move');
+        } else {
+            li.classList.add('opponent-move');
         }
         if (viewedMoveIndex === i + 1) {
             li.classList.add('active-history');
         }
         historyList.appendChild(li);
     });
+    lastRenderedHistoryCount = history.length;
+    if (shouldScrollAfterRender) {
+        scrollHistoryToLatest({ smooth: previousRenderedCount > 0 });
+    }
 }
 
 function highlightHistoryItem(index) {
@@ -877,9 +957,12 @@ async function onHistoryClick(e) {
     if (pendingMove) return;
     const idx = parseInt(e.currentTarget.dataset.index);
     if (idx === historyList.childElementCount) {
+        shouldFollowHistory = true;
         await fetchBoard();
+        scrollHistoryToLatest();
         return;
     }
+    shouldFollowHistory = false;
     const data = await (await fetch(`/api/single/snapshot/${boardId}/${idx}`)).json();
     boardState = data;
     clearInterval(timerInterval);
@@ -1007,8 +1090,14 @@ window.addEventListener('storage', event => {
     }
 });
 
-returnButton.addEventListener('click', () => {
-    fetchBoard();
+historyScroller?.addEventListener('wheel', handleHistoryUserIntent, { passive: true });
+historyScroller?.addEventListener('touchstart', handleHistoryUserIntent, { passive: true });
+historyScroller?.addEventListener('pointerdown', handleHistoryUserIntent);
+historyScroller?.addEventListener('scroll', updateHistoryAutoFollow, { passive: true });
+returnButton.addEventListener('click', async () => {
+    shouldFollowHistory = true;
+    await fetchBoard();
+    scrollHistoryToLatest();
 });
 
 const menuToggle = document.querySelector('.menu-toggle');

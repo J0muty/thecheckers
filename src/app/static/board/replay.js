@@ -7,6 +7,76 @@ const myColor = typeof playerColor !== 'undefined' && playerColor ? playerColor 
 let boardState = [];
 let viewedMoveIndex = 0;
 
+function pieceOwner(piece) {
+    return piece.toLowerCase() === 'w' ? 'white' : 'black';
+}
+
+function cloneBoard(board) {
+    return board.map(row => [...row]);
+}
+
+function createInitialBoardLocal() {
+    const board = Array.from({ length: 8 }, () => Array(8).fill(null));
+    for (let row = 0; row < 3; row++) {
+        for (let col = 0; col < 8; col++) {
+            if ((row + col) % 2 === 1) board[row][col] = 'b';
+        }
+    }
+    for (let row = 5; row < 8; row++) {
+        for (let col = 0; col < 8; col++) {
+            if ((row + col) % 2 === 1) board[row][col] = 'w';
+        }
+    }
+    return board;
+}
+
+function parseMoveNotation(move) {
+    const [startStr, endStr] = move.split('->');
+    return {
+        start: [8 - parseInt(startStr.slice(1), 10), startStr.charCodeAt(0) - 65],
+        end: [8 - parseInt(endStr.slice(1), 10), endStr.charCodeAt(0) - 65],
+    };
+}
+
+function applyMoveLocal(board, start, end) {
+    const nextBoard = cloneBoard(board);
+    const piece = nextBoard[start[0]][start[1]];
+    if (!piece) return nextBoard;
+    nextBoard[start[0]][start[1]] = null;
+
+    const stepRow = Math.sign(end[0] - start[0]);
+    const stepCol = Math.sign(end[1] - start[1]);
+    let row = start[0] + stepRow;
+    let col = start[1] + stepCol;
+    while (row !== end[0] || col !== end[1]) {
+        if (nextBoard[row][col] !== null) {
+            nextBoard[row][col] = null;
+            break;
+        }
+        row += stepRow;
+        col += stepCol;
+    }
+
+    let movedPiece = piece;
+    if (movedPiece === movedPiece.toLowerCase()) {
+        if (movedPiece === 'w' && end[0] === 0) movedPiece = 'W';
+        if (movedPiece === 'b' && end[0] === 7) movedPiece = 'B';
+    }
+    nextBoard[end[0]][end[1]] = movedPiece;
+    return nextBoard;
+}
+
+function historyMoveOwners(history) {
+    let replayBoard = createInitialBoardLocal();
+    return history.map(move => {
+        const { start, end } = parseMoveNotation(move);
+        const piece = replayBoard[start[0]]?.[start[1]];
+        const owner = piece ? pieceOwner(piece) : null;
+        replayBoard = applyMoveLocal(replayBoard, start, end);
+        return owner;
+    });
+}
+
 function toBoardCoords(r, c) {
     return myColor === 'black' ? [7 - r, 7 - c] : [r, c];
 }
@@ -45,13 +115,17 @@ function renderBoard() {
 
 function updateHistory(history) {
     historyList.innerHTML = '';
+    const moveOwners = historyMoveOwners(history);
     history.forEach((m, i) => {
         const li = document.createElement('li');
         li.textContent = displayMove(m);
         li.dataset.index = i + 1;
         li.addEventListener('click', onHistoryClick);
-        if (myColor && ((myColor === 'white' && i % 2 === 0) || (myColor === 'black' && i % 2 === 1))) {
+        const isOwnMove = myColor && moveOwners[i] === myColor;
+        if (isOwnMove) {
             li.classList.add('my-move');
+        } else {
+            li.classList.add('opponent-move');
         }
         if (viewedMoveIndex === i + 1) {
             li.classList.add('active-history');
