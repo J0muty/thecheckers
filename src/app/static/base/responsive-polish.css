@@ -305,6 +305,7 @@ button,
 
     .home-grid .btn::after {
         display: none;
+        content: none;
     }
 
     .status-container {

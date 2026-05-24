@@ -57,6 +57,16 @@ async def profile(request: Request):
         "profile.html", {"request": request, "username": username or str(user_id)}
     )
 
+@profile_router.get("/profile/inventory", response_class=HTMLResponse, name="profile_inventory_page")
+async def profile_inventory_page(request: Request):
+    user_id = request.session.get("user_id")
+    if not user_id or is_guest(user_id):
+        return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+    return templates.TemplateResponse(
+        "inventory.html",
+        {"request": request, "inventory_origin": "profile"},
+    )
+
 @profile_router.get("/profile/friends", response_class=HTMLResponse, name="friends")
 async def friends(request: Request):
     user_id = request.session.get("user_id")

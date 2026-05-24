@@ -84,3 +84,27 @@ class UserAchievement(Base):
     user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
     achievement_id = Column(Integer, ForeignKey("achievements.id"), primary_key=True)
     timestamp = Column(DateTime(timezone=True), nullable=False)
+
+
+class UserWallet(Base):
+    __tablename__ = "user_wallets"
+
+    user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
+    soft_balance = Column(Integer, nullable=False, default=0)
+    rub_balance = Column(Integer, nullable=False, default=0)
+
+
+class UserCheckerSkin(Base):
+    __tablename__ = "user_checker_skins"
+
+    user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
+    skin_id = Column(String(64), primary_key=True)
+    acquired_at = Column(DateTime(timezone=True), nullable=False)
+    source = Column(String(32), nullable=False, default="system")
+
+
+class UserSelectedCheckerSkin(Base):
+    __tablename__ = "user_selected_checker_skins"
+
+    user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
+    skin_id = Column(String(64), nullable=False, default="classic")

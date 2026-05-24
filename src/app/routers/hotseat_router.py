@@ -42,7 +42,7 @@ from src.base.hotseat_redis import (
     clear_draw_state,
 )
 from src.app.routers.ws_router import board_manager
-from src.base.postgres import record_game, save_recorded_game
+from src.base.postgres import get_selected_checker_skins, record_game, save_recorded_game
 from src.app.utils.guest import is_guest
 
 logger = logging.getLogger(__name__)
@@ -143,6 +143,7 @@ class BoardState(BaseModel):
     board: Board
     history: List[str]
     timers: Timers
+    skins: dict[str, str] = Field(default_factory=dict)
     forced_piece: Optional[Point] = None
     forced_moves: List[Point] = Field(default_factory=list)
 
@@ -207,10 +208,14 @@ async def api_hotseat_board(board_id: str):
     timers = await get_current_timers(board_id, create=False) or await get_current_timers(board_id)
     chain_state = await get_chain_state(board_id)
     forced_piece, forced_moves = _forced_payload(board, chain_state)
+    user_id = await get_game_user(board_id)
+    hotseat_user_id = int(user_id) if user_id and str(user_id).isdigit() else None
+    skins = await get_selected_checker_skins({"white": hotseat_user_id, "black": hotseat_user_id})
     return BoardState(
         board=board,
         history=history,
         timers=timers,
+        skins=skins,
         forced_piece=forced_piece,
         forced_moves=forced_moves,
     )

@@ -54,6 +54,85 @@ body.no-select textarea {
     box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     z-index: 100;
 }
+
+.profile-topbar-wallet {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    color: var(--text-color);
+    text-decoration: none;
+}
+
+.profile-wallet-pill {
+    min-height: 36px;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 4px 10px 4px 5px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--surface-color) 78%, var(--accent-color));
+    border: 1px solid color-mix(in srgb, var(--accent-color) 22%, transparent);
+    color: var(--text-color);
+    font-weight: 700;
+    font-size: 0.92rem;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+}
+
+.tc-coin-mark,
+.rub-mark {
+    width: 26px;
+    height: 26px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    border-radius: 50%;
+}
+
+.tc-coin-mark {
+    background: radial-gradient(circle at 30% 25%, #ffffff 0%, #bfe0ff 32%, #4f8cff 72%, #1d4ed8 100%);
+    color: #fff;
+    box-shadow: inset 0 2px 3px rgba(255,255,255,0.75), inset 0 -4px 8px rgba(7,24,82,0.35);
+}
+
+.tc-coin-mark svg {
+    width: 21px;
+    height: 21px;
+}
+
+.tc-coin-mark circle {
+    fill: none;
+    stroke: rgba(255,255,255,0.8);
+    stroke-width: 1.8;
+}
+
+.tc-coin-mark path:first-of-type {
+    fill: rgba(255,255,255,0.22);
+    stroke: rgba(255,255,255,0.95);
+    stroke-width: 1.7;
+}
+
+.tc-coin-mark path:last-of-type {
+    fill: none;
+    stroke: rgba(255,255,255,0.78);
+    stroke-width: 1.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.rub-mark {
+    background: color-mix(in srgb, var(--accent-color) 16%, var(--surface-color));
+    border: 1px solid color-mix(in srgb, var(--accent-color) 34%, transparent);
+    color: var(--accent-color);
+    font-size: 0.92rem;
+    font-weight: 800;
+}
+
+.dark-mode .profile-wallet-pill {
+    box-shadow: 0 8px 22px rgba(0,0,0,0.22);
+}
+
 .btn-icon {
     background: none;
     border: none;
@@ -144,4 +223,46 @@ input:autofill{
     box-shadow:0 0 0 1000px var(--surface-color) inset !important;
     -webkit-text-fill-color:var(--text-color) !important;
     color:var(--text-color) !important;
+}
+
+@media (max-width: 420px) {
+    .topbar {
+        gap: 8px;
+        padding: 0 10px;
+    }
+
+    .profile-topbar-wallet {
+        gap: 5px;
+    }
+
+    .profile-wallet-pill {
+        min-height: 32px;
+        gap: 5px;
+        padding: 4px 8px 4px 5px;
+        font-size: 0.82rem;
+    }
+
+    .tc-coin-mark,
+    .rub-mark {
+        width: 22px;
+        height: 22px;
+    }
+
+    .tc-coin-mark svg {
+        width: 18px;
+        height: 18px;
+    }
+}
+
+@media (max-width: 260px) {
+    .profile-wallet-pill {
+        width: 30px;
+        min-width: 30px;
+        padding: 0;
+        justify-content: center;
+    }
+
+    .profile-wallet-pill > span:last-child {
+        display: none;
+    }
 }

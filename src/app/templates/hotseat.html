@@ -14,7 +14,7 @@
         window.globalSessionToken = "{{ request.session.session_token or '' }}";
     </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="/static/board/board.css">
+    <link rel="stylesheet" href="/static/board/board.css?v=20260524-store9">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="/static/base/toast.css?v=20260523">
     <link rel="stylesheet" href="/static/base/theme.css">
@@ -23,8 +23,9 @@
         const playerColor = "{{ player_color }}";
         window.checkerMoveMode = {{ move_input_mode|default('click')|tojson }};
     </script>
+    <script src="/static/board/checker3d.js?v=20260524-store9" defer></script>
     {% block board_script %}
-    <script src="/static/board/hotseat.js" defer></script>
+    <script src="/static/board/hotseat.js?v=20260524-store9" defer></script>
     {% endblock %}
 </head>
 <body>

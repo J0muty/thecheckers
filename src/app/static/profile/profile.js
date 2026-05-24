@@ -20,6 +20,22 @@ async function loadStats() {
     }
 }
 
+async function loadWallet() {
+    try {
+        const res = await fetch('/api/wallet', {cache: 'no-store'});
+        if (!res.ok) return;
+        const wallet = await res.json();
+        document.querySelectorAll('[data-soft-balance]').forEach(el => {
+            el.textContent = Number(wallet.soft_balance || 0).toLocaleString('ru-RU');
+        });
+        document.querySelectorAll('[data-rub-balance]').forEach(el => {
+            el.textContent = Number(wallet.rub_balance || 0).toLocaleString('ru-RU');
+        });
+    } catch (error) {
+        console.error('Failed to load wallet:', error);
+    }
+}
+
 let offset = 0;
 const limit = 10;
 let allLoaded = false;
@@ -93,6 +109,7 @@ function updateButtons() {
 
 document.addEventListener('DOMContentLoaded', () => {
     if (document.getElementById('total-games')) {
+        loadWallet();
         loadStats().then(loadHistory);
         const loadBtn = document.getElementById('load-more-btn');
         const hideBtn = document.getElementById('hide-btn');

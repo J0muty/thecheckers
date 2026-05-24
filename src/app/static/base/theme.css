@@ -124,6 +124,7 @@ select:focus-visible,
     min-height: 40px;
     padding: 0 14px;
     font-size: 0.94rem;
+    font-weight: 800;
 }
 
 .profile-link i {
@@ -319,18 +320,16 @@ select:focus,
 }
 
 .home-grid .btn {
-    justify-content: flex-start;
+    justify-content: center;
+    text-align: center;
     min-height: clamp(46px, 10vw, 68px);
     padding: 0 clamp(14px, 4vw, 24px);
     font-size: clamp(0.92rem, 5vw, 1.15rem);
 }
 
 .home-grid .btn::after {
-    content: "\f061";
-    margin-left: auto;
-    font-family: "Font Awesome 6 Free";
-    font-weight: 900;
-    opacity: 0.78;
+    display: none;
+    content: none;
 }
 
 .status-container {

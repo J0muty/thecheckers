@@ -44,7 +44,7 @@ from src.base.single_redis import (
     clear_draw_state,
 )
 from src.base.redis import get_user_move_input_mode
-from src.base.postgres import record_game, save_recorded_game
+from src.base.postgres import get_selected_checker_skins, record_game, save_recorded_game
 from src.app.achievements.bots import check_bot_achievements
 from src.app.game.bot_profiles import normalize_difficulty
 from src.app.utils.guest import is_guest
@@ -228,6 +228,7 @@ class BoardState(BaseModel):
     history: List[str]
     timers: Timers
     players: Optional[dict[str, str]] = None
+    skins: dict[str, str] = Field(default_factory=dict)
     forced_piece: Optional[Point] = None
     forced_moves: List[Point] = Field(default_factory=list)
 
@@ -350,6 +351,13 @@ async def api_get_board(game_id: str):
     players = {"white": "Вы", "black": "Бот"}
     if color == "black":
         players = {"white": "Бот", "black": "Вы"}
+    user_id = await get_game_user(game_id)
+    human_user_id = int(user_id) if user_id and str(user_id).isdigit() else None
+    skin_user_ids = {
+        color: human_user_id,
+        opponent(color): None,
+    }
+    skins = await get_selected_checker_skins(skin_user_ids)
     chain_state = await get_chain_state(game_id)
     forced_piece, forced_moves = _forced_payload(board, chain_state)
     return BoardState(
@@ -357,6 +365,7 @@ async def api_get_board(game_id: str):
         history=history,
         timers=timers,
         players=players,
+        skins=skins,
         forced_piece=forced_piece,
         forced_moves=forced_moves,
     )

@@ -80,6 +80,7 @@ function fromBoardCoords(r, c) {
 }
 
 let boardState = [];
+let pieceSkins = {white: 'classic', black: 'classic'};
 let selected = null;
 let possibleMoves = [];
 let timers = {white: 600, black: 600, turn: 'white'};
@@ -206,13 +207,21 @@ function formatMoveNotation(start, end) {
 
 function createPieceElement(piece, boardRow) {
     const el = document.createElement('div');
-    el.classList.add('piece', piece.toLowerCase() === 'w' ? 'white' : 'black');
-    if (
+    const owner = piece.toLowerCase() === 'w' ? 'white' : 'black';
+    const isKing =
         piece === piece.toUpperCase() ||
         (piece.toLowerCase() === 'w' && boardRow === 0) ||
-        (piece.toLowerCase() === 'b' && boardRow === 7)
-    ) {
+        (piece.toLowerCase() === 'b' && boardRow === 7);
+    el.classList.add('piece', owner);
+    if (isKing) {
         el.classList.add('king');
+    }
+    if (window.Checker3D) {
+        window.Checker3D.enhancePiece(el, {
+            skinId: pieceSkins[owner],
+            color: owner,
+            king: isKing,
+        });
     }
     return el;
 }
@@ -511,6 +520,9 @@ function setGameActionsVisible(visible) {
 }
 
 async function handleUpdate(data) {
+    if (data.skins && typeof data.skins === 'object') {
+        pieceSkins = {...pieceSkins, ...data.skins};
+    }
     const wasGameOver = gameOver;
     const wasViewingHistory = viewingHistory;
     const previousHistoryLen = lastHistoryLen;

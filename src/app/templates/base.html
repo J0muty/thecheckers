@@ -11,10 +11,10 @@
     <title>{% block title %}TheCheckers{% endblock %}</title>
     <link rel="icon" href="/static/base/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="/static/base/base.css">
+    <link rel="stylesheet" href="/static/base/base.css?v=20260524-store9">
     <link rel="stylesheet" href="/static/base/toast.css?v=20260523">
     {% block extra_css %}{% endblock %}
-    <link rel="stylesheet" href="/static/base/theme.css">
+    <link rel="stylesheet" href="/static/base/theme.css?v=20260524-home-buttons">
     <script>
         window.globalUserId = "{{ request.session.get('user_id','')|string }}";
         window.globalSessionToken = "{{ request.session.get('session_token','')|string }}";
@@ -25,12 +25,30 @@
 </head>
 <body class="{% block body_class %}{% endblock %}">
     <header class="header">
-        <div class="logo">TheCheckers</div>
+        <a class="logo" href="/" aria-label="TheCheckers на главную">TheCheckers</a>
         <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Переключить тему">
             <i class="fa-solid fa-moon" id="theme-icon"></i>
         </button>
         {% set uid = request.session.get('user_id') %}
         {% set guest = (uid is string) and uid.startswith('ghost_') %}
+        {% if uid and not guest %}
+            <a href="{{ url_for('store_page') }}" class="wallet-strip" data-wallet-strip hidden aria-label="Баланс">
+                <span class="wallet-pill wallet-pill-soft">
+                    <span class="tc-coin-mark" aria-hidden="true">
+                        <svg viewBox="0 0 32 32" role="img" focusable="false">
+                            <circle cx="16" cy="16" r="14"></circle>
+                            <path d="M16 5.5 25 13.4 16 26.5 7 13.4Z"></path>
+                            <path d="M16 5.5v21M7 13.4h18M11.2 13.4 16 26.5l4.8-13.1"></path>
+                        </svg>
+                    </span>
+                    <span data-soft-balance>0</span>
+                </span>
+                <span class="wallet-pill wallet-pill-rub">
+                    <span class="rub-mark" aria-hidden="true">₽</span>
+                    <span data-rub-balance>0</span>
+                </span>
+            </a>
+        {% endif %}
         <nav class="nav">
             {% if uid and not guest %}
                 <button id="notifBell" class="notification-bell" type="button" aria-label="Оповещения" aria-expanded="false">
@@ -55,7 +73,7 @@
 
     <footer class="footer">© 2025 TheCheckers</footer>
     <script src="/static/base/toast.js?v=20260523"></script>
-    <script src="/static/base/base.js"></script>
+    <script src="/static/base/base.js?v=20260524-store9"></script>
     {% if flash %}
     <script>
         window.addEventListener('DOMContentLoaded', () => {

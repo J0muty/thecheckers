@@ -67,4 +67,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (window.globalSessionToken) setupSessionWs();
+
+    async function loadTopbarWallet() {
+        try {
+            const res = await fetch('/api/wallet', {cache: 'no-store'});
+            if (!res.ok) return;
+            const wallet = await res.json();
+            document.querySelectorAll('[data-soft-balance]').forEach(el => {
+                el.textContent = Number(wallet.soft_balance || 0).toLocaleString('ru-RU');
+            });
+            document.querySelectorAll('[data-rub-balance]').forEach(el => {
+                el.textContent = Number(wallet.rub_balance || 0).toLocaleString('ru-RU');
+            });
+        } catch (error) {
+            console.error('Failed to load wallet:', error);
+        }
+    }
+
+    loadTopbarWallet();
 });

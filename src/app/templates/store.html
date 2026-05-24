@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+
+{% block title %}Магазин{% endblock %}
+
+{% block body_class %}no-select store-page{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="/static/shop/shop.css?v=20260524-inventory1">
+{% endblock %}
+
+{% block content %}
+    <section class="store-shell" data-shop-mode="store">
+        <div class="store-head">
+            <a class="store-home-link" href="{{ url_for('home') }}">
+                <i class="fa-solid fa-house" aria-hidden="true"></i>
+                <span>На главную</span>
+            </a>
+            <h1>Магазин</h1>
+            <a class="store-inventory-link" href="{{ url_for('store_inventory_page') }}">
+                <i class="fa-solid fa-box-open" aria-hidden="true"></i>
+                <span>Инвентарь</span>
+            </a>
+        </div>
+
+        <div class="store-status" id="storeStatus"></div>
+        <div class="skin-grid" id="skinGrid"></div>
+    </section>
+{% endblock %}
+
+{% block extra_js %}
+    <script src="/static/board/checker3d.js?v=20260524-inventory1"></script>
+    <script src="/static/shop/shop.js?v=20260524-inventory1"></script>
+{% endblock %}

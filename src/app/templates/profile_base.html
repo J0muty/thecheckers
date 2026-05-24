@@ -13,7 +13,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="/static/profile/profile_base.css">
+    <link rel="stylesheet" href="/static/profile/profile_base.css?v=20260524-wallet1">
     {% block extra_css %}{% endblock %}
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="/static/base/toast.css?v=20260523">
@@ -26,6 +26,22 @@
 <body class="no-select">
     <header class="topbar">
         <button id="sidebarToggle" class="btn-icon"><i class="fa-solid fa-bars"></i></button>
+        <a href="{{ url_for('store_page') }}" class="profile-topbar-wallet" aria-label="Баланс">
+            <span class="profile-wallet-pill profile-wallet-pill-soft" title="Кристаллы">
+                <span class="tc-coin-mark" aria-hidden="true">
+                    <svg viewBox="0 0 32 32" role="img" focusable="false">
+                        <circle cx="16" cy="16" r="14"></circle>
+                        <path d="M16 5.5 25 13.4 16 26.5 7 13.4Z"></path>
+                        <path d="M16 5.5v21M7 13.4h18M11.2 13.4 16 26.5l4.8-13.1"></path>
+                    </svg>
+                </span>
+                <span data-soft-balance>0</span>
+            </span>
+            <span class="profile-wallet-pill profile-wallet-pill-rub" title="Рубли">
+                <span class="rub-mark" aria-hidden="true">₽</span>
+                <span data-rub-balance>0</span>
+            </span>
+        </a>
         <button id="theme-toggle" class="btn-icon"><i class="fa-solid fa-moon" id="theme-icon"></i></button>
     </header>
     <aside id="sidebar" class="sidebar">
@@ -37,6 +53,10 @@
             <a href="/profile" class="nav-item{% if request.url.path == '/profile' %} active{% endif %}">
                 <i class="fa-solid fa-user"></i>
                 <span>Профиль</span>
+            </a>
+            <a href="/profile/inventory" class="nav-item{% if request.url.path == '/profile/inventory' %} active{% endif %}">
+                <i class="fa-solid fa-box-open"></i>
+                <span>Инвентарь</span>
             </a>
             <a href="/profile/friends" class="nav-item{% if request.url.path == '/profile/friends' %} active{% endif %}">
                 <i class="fa-solid fa-user-group"></i>

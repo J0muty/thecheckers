@@ -10,6 +10,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     showPendingToast();
     initThemeToggle();
+    initWalletStrip();
     initNotificationPanel();
     initSessionWs();
 });
@@ -54,6 +55,23 @@ function initThemeToggle() {
     setTheme(initialTheme);
     if (toggle) {
         toggle.addEventListener('click', () => setTheme(root.classList.contains('dark-mode') ? 'light' : 'dark'));
+    }
+}
+
+async function initWalletStrip() {
+    const strip = document.querySelector('[data-wallet-strip]');
+    if (!strip || !window.globalUserId || String(window.globalUserId).startsWith('ghost_')) return;
+    try {
+        const response = await fetch('/api/wallet', {cache: 'no-store'});
+        if (!response.ok) return;
+        const wallet = await response.json();
+        const soft = strip.querySelector('[data-soft-balance]');
+        const rub = strip.querySelector('[data-rub-balance]');
+        if (soft) soft.textContent = Number(wallet.soft_balance || 0).toLocaleString('ru-RU');
+        if (rub) rub.textContent = Number(wallet.rub_balance || 0).toLocaleString('ru-RU');
+        strip.hidden = false;
+    } catch (error) {
+        console.error('Failed to load wallet:', error);
     }
 }
 

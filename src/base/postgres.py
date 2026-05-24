@@ -15,10 +15,20 @@ from src.base.postgres_models import (
     GameHistory,
     Achievement,
     UserAchievement,
+    UserWallet,
+    UserCheckerSkin,
+    UserSelectedCheckerSkin,
 )
 from src.app.achievements.data import ALL_ACHIEVEMENTS
 from src.app.game.count_and_rang import update_elo, calculate_rank
 from src.app.game.bot_profiles import PROFILE_ALIASES, normalize_difficulty
+from src.app.shop.skins import (
+    CHECKER_SKINS,
+    CHECKER_SKIN_IDS,
+    DEFAULT_CHECKER_SKIN_ID,
+    STORE_ALL_ACCESS_LOGIN,
+    checker_skin_by_id,
+)
 from src.app.utils.security import hash_password, verify_password
 from src.settings.config import MOSCOW_TZ, db_user, db_password, db_host, db_port, db_name
 
@@ -391,10 +401,240 @@ async def delete_user_account(user_id: int, session: AsyncSession) -> None:
     await session.execute(
         text("DELETE FROM user_stats WHERE user_id = :uid"), {"uid": user_id}
     )
+    await session.execute(
+        text("DELETE FROM user_selected_checker_skins WHERE user_id = :uid"),
+        {"uid": user_id},
+    )
+    await session.execute(
+        text("DELETE FROM user_checker_skins WHERE user_id = :uid"),
+        {"uid": user_id},
+    )
+    await session.execute(
+        text("DELETE FROM user_wallets WHERE user_id = :uid"), {"uid": user_id}
+    )
     user = await session.get(User, user_id)
     if user:
         await session.delete(user)
     await session.commit()
+
+
+def _has_all_skin_access(user: User | None) -> bool:
+    return bool(user and str(user.login).strip().lower() == STORE_ALL_ACCESS_LOGIN)
+
+
+async def _ensure_wallet(session: AsyncSession, user_id: int) -> UserWallet:
+    wallet = await session.get(UserWallet, user_id)
+    if wallet is None:
+        await session.execute(
+            insert(UserWallet)
+            .values(user_id=user_id, soft_balance=0, rub_balance=0)
+            .on_conflict_do_nothing(index_elements=[UserWallet.user_id])
+        )
+        await session.flush()
+        wallet = await session.get(UserWallet, user_id)
+    if wallet is None:
+        raise ValueError("WALLET_NOT_FOUND")
+    return wallet
+
+
+async def _owned_skin_ids(session: AsyncSession, user_id: int) -> set[str]:
+    result = await session.execute(
+        select(UserCheckerSkin.skin_id).where(UserCheckerSkin.user_id == user_id)
+    )
+    return {row[0] for row in result.all()}
+
+
+async def _grant_skin(
+    session: AsyncSession,
+    user_id: int,
+    skin_id: str,
+    owned_ids: set[str],
+    source: str,
+) -> None:
+    if skin_id in owned_ids:
+        return
+    await session.execute(
+        insert(UserCheckerSkin)
+        .values(
+            user_id=user_id,
+            skin_id=skin_id,
+            acquired_at=datetime.now(tz=MOSCOW_TZ),
+            source=source,
+        )
+        .on_conflict_do_nothing(index_elements=[UserCheckerSkin.user_id, UserCheckerSkin.skin_id])
+    )
+    owned_ids.add(skin_id)
+
+
+async def _ensure_store_records(
+    session: AsyncSession,
+    user_id: int,
+) -> tuple[User, UserWallet, set[str], UserSelectedCheckerSkin]:
+    user = await session.get(User, user_id)
+    if user is None:
+        raise ValueError("USER_NOT_FOUND")
+
+    wallet = await _ensure_wallet(session, user_id)
+    owned_ids = await _owned_skin_ids(session, user_id)
+    await _grant_skin(session, user_id, DEFAULT_CHECKER_SKIN_ID, owned_ids, "default")
+
+    if _has_all_skin_access(user):
+        for skin in CHECKER_SKINS:
+            await _grant_skin(session, user_id, skin["id"], owned_ids, "owner_access")
+
+    selected = await session.get(UserSelectedCheckerSkin, user_id)
+    if selected is None:
+        await session.execute(
+            insert(UserSelectedCheckerSkin)
+            .values(user_id=user_id, skin_id=DEFAULT_CHECKER_SKIN_ID)
+            .on_conflict_do_nothing(index_elements=[UserSelectedCheckerSkin.user_id])
+        )
+        await session.flush()
+        selected = await session.get(UserSelectedCheckerSkin, user_id)
+    if selected is None:
+        raise ValueError("SELECTED_SKIN_NOT_FOUND")
+
+    if selected.skin_id not in CHECKER_SKIN_IDS or selected.skin_id not in owned_ids:
+        selected.skin_id = DEFAULT_CHECKER_SKIN_ID
+
+    await session.flush()
+    return user, wallet, owned_ids, selected
+
+
+def _wallet_payload(wallet: UserWallet) -> dict:
+    return {
+        "soft_balance": int(wallet.soft_balance or 0),
+        "rub_balance": int(wallet.rub_balance or 0),
+    }
+
+
+def _skin_payload(skin: dict, owned_ids: set[str], selected_skin_id: str) -> dict:
+    return {
+        **skin,
+        "owned": skin["id"] in owned_ids,
+        "selected": skin["id"] == selected_skin_id,
+    }
+
+
+@connect
+async def get_user_wallet(user_id: int, session: AsyncSession) -> dict:
+    _user, wallet, _owned_ids, _selected = await _ensure_store_records(session, user_id)
+    await session.commit()
+    return _wallet_payload(wallet)
+
+
+@connect
+async def get_checker_store_state(user_id: int, session: AsyncSession) -> dict:
+    user, wallet, owned_ids, selected = await _ensure_store_records(session, user_id)
+    await session.commit()
+    return {
+        "wallet": _wallet_payload(wallet),
+        "selected_skin": selected.skin_id,
+        "all_access": _has_all_skin_access(user),
+        "skins": [
+            _skin_payload(skin, owned_ids, selected.skin_id)
+            for skin in CHECKER_SKINS
+        ],
+    }
+
+
+@connect
+async def buy_checker_skin(user_id: int, skin_id: str, session: AsyncSession) -> dict:
+    skin = checker_skin_by_id(skin_id)
+    if skin is None:
+        return {"status": "error", "error": "unknown_skin"}
+
+    user, _wallet, owned_ids, selected = await _ensure_store_records(session, user_id)
+    wallet = await session.get(UserWallet, user_id, with_for_update=True)
+    if wallet is None:
+        wallet = await _ensure_wallet(session, user_id)
+
+    if skin_id in owned_ids:
+        await session.commit()
+        return {
+            "status": "owned",
+            "wallet": _wallet_payload(wallet),
+            "selected_skin": selected.skin_id,
+        }
+
+    if _has_all_skin_access(user):
+        await _grant_skin(session, user_id, skin_id, owned_ids, "owner_access")
+        await session.commit()
+        return {
+            "status": "ok",
+            "wallet": _wallet_payload(wallet),
+            "selected_skin": selected.skin_id,
+        }
+
+    if skin["currency"] == "free":
+        await _grant_skin(session, user_id, skin_id, owned_ids, "free")
+    elif skin["currency"] == "soft":
+        price = int(skin["soft_price"])
+        if int(wallet.soft_balance or 0) < price:
+            await session.commit()
+            return {"status": "error", "error": "not_enough_soft", "wallet": _wallet_payload(wallet)}
+        wallet.soft_balance = int(wallet.soft_balance or 0) - price
+        await _grant_skin(session, user_id, skin_id, owned_ids, "soft")
+    elif skin["currency"] == "rub":
+        price = int(skin["rub_price"])
+        if int(wallet.rub_balance or 0) < price:
+            await session.commit()
+            return {"status": "error", "error": "not_enough_rub", "wallet": _wallet_payload(wallet)}
+        wallet.rub_balance = int(wallet.rub_balance or 0) - price
+        await _grant_skin(session, user_id, skin_id, owned_ids, "rub")
+    else:
+        return {"status": "error", "error": "unknown_currency"}
+
+    await session.commit()
+    return {
+        "status": "ok",
+        "wallet": _wallet_payload(wallet),
+        "selected_skin": selected.skin_id,
+    }
+
+
+@connect
+async def select_checker_skin(user_id: int, skin_id: str, session: AsyncSession) -> dict:
+    if skin_id not in CHECKER_SKIN_IDS:
+        return {"status": "error", "error": "unknown_skin"}
+
+    _user, wallet, owned_ids, selected = await _ensure_store_records(session, user_id)
+    if skin_id not in owned_ids:
+        await session.commit()
+        return {
+            "status": "error",
+            "error": "skin_not_owned",
+            "wallet": _wallet_payload(wallet),
+            "selected_skin": selected.skin_id,
+        }
+
+    selected.skin_id = skin_id
+    await session.commit()
+    return {
+        "status": "ok",
+        "wallet": _wallet_payload(wallet),
+        "selected_skin": selected.skin_id,
+    }
+
+
+@connect
+async def get_selected_checker_skin(user_id: int, session: AsyncSession) -> str:
+    _user, _wallet, _owned_ids, selected = await _ensure_store_records(session, user_id)
+    await session.commit()
+    return selected.skin_id
+
+
+@connect
+async def get_selected_checker_skins(user_ids_by_color: dict[str, int | None], session: AsyncSession) -> dict[str, str]:
+    skins: dict[str, str] = {}
+    for color, user_id in user_ids_by_color.items():
+        if user_id is None:
+            skins[color] = DEFAULT_CHECKER_SKIN_ID
+            continue
+        _user, _wallet, _owned_ids, selected = await _ensure_store_records(session, int(user_id))
+        skins[color] = selected.skin_id
+    await session.commit()
+    return skins
 
 @connect
 async def ensure_achievements(achievements: list[dict], session: AsyncSession) -> None:

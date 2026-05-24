@@ -435,7 +435,7 @@ body {
 }
 
 .piece.white:hover {
-    transform: rotateX(15deg) scale(1.05);
+    transform: rotateX(15deg);
 }
 
 .piece.black {
@@ -446,7 +446,7 @@ body {
 }
 
 .piece.black:hover {
-    transform: rotateX(15deg) scale(1.05);
+    transform: rotateX(15deg);
 }
 
 @keyframes goldGlow {
@@ -476,7 +476,37 @@ body {
 
 .piece.king:hover {
     animation-duration: 1.5s;
-    transform: rotateX(15deg) scale(1.08);
+    transform: rotateX(15deg);
+}
+
+.piece.has-3d {
+    width: 84%;
+    height: 84%;
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    overflow: visible;
+    transform: none;
+    filter: drop-shadow(0 12px 10px rgba(0,0,0,0.42));
+}
+
+.piece.has-3d.king,
+.piece.has-3d.king:hover {
+    animation: none;
+}
+
+.piece.has-3d:hover {
+    transform: none;
+}
+
+.checker-3d-img {
+    width: 148%;
+    height: 148%;
+    display: block;
+    object-fit: contain;
+    pointer-events: none;
+    user-select: none;
+    transform: translateY(1.5%);
 }
 
 .selected {

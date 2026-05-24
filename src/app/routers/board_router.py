@@ -70,6 +70,7 @@ from src.base.postgres import (
     record_game_result,
     get_user_stats,
     get_user_login,
+    get_selected_checker_skins,
     record_game,
     save_recorded_game,
 )
@@ -154,6 +155,7 @@ class BoardState(BaseModel):
     history: List[str]
     timers: Timers
     players: Optional[dict[str, str]] = None
+    skins: dict[str, str] = Field(default_factory=dict)
     forced_piece: Optional[Point] = None
     forced_moves: List[Point] = Field(default_factory=list)
 
@@ -314,11 +316,17 @@ async def api_get_board(board_id: str):
     players = {}
     for color, uid in players_raw.items():
         players[color] = await get_display_name(uid)
+    skin_user_ids = {
+        color: int(uid) if str(uid).isdigit() else None
+        for color, uid in players_raw.items()
+    }
+    skins = await get_selected_checker_skins(skin_user_ids)
     return BoardState(
         board=board,
         history=history_list,
         timers=timers_view,
         players=players,
+        skins=skins,
         forced_piece=forced_piece,
         forced_moves=forced_moves,
     )

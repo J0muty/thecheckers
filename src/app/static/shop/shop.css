@@ -1,0 +1,542 @@
+body.store-page.no-select:not(:has(.game-container)) > .header + main {
+    padding-top: 64px !important;
+}
+
+.store-shell {
+    width: min(1120px, 100%);
+    margin: 0 auto;
+    min-height: calc(var(--vh) * 100 - 90px);
+    padding: 40px 0 72px;
+}
+
+.store-head {
+    display: grid;
+    grid-template-columns: minmax(42px, 1fr) auto minmax(42px, 1fr);
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 26px;
+}
+
+.store-head h1 {
+    grid-column: 2;
+    font-size: clamp(2rem, 5vw, 3.4rem);
+    line-height: 1;
+    margin: 0;
+    color: var(--text-color);
+    text-align: center;
+}
+
+.store-home-link,
+.store-inventory-link {
+    grid-column: 1;
+    justify-self: start;
+    min-height: 42px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 0 16px;
+    border: 1px solid var(--border-color, color-mix(in srgb, var(--secondary-text-color) 20%, transparent));
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--surface-color) 78%, transparent);
+    color: var(--text-color);
+    text-decoration: none;
+    font-size: 0.94rem;
+    font-weight: 800;
+    white-space: nowrap;
+    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
+    transition: transform 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+}
+
+.store-inventory-link {
+    grid-column: 3;
+    justify-self: end;
+}
+
+.store-home-link:hover,
+.store-inventory-link:hover {
+    color: var(--accent-color);
+    border-color: color-mix(in srgb, var(--accent-color) 45%, var(--border-color, transparent));
+    transform: translateY(-1px);
+}
+
+.store-status {
+    margin: 18px 0;
+    color: var(--secondary-text-color);
+    font-weight: 600;
+}
+
+.store-status:empty {
+    display: none;
+}
+
+.skin-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 16px;
+    align-items: stretch;
+}
+
+.skin-card {
+    min-width: 0;
+    display: grid;
+    grid-template-rows: auto auto auto;
+    gap: 14px;
+    padding: 14px;
+    border-radius: var(--border-radius);
+    border: 1px solid color-mix(in srgb, var(--secondary-text-color) 22%, transparent);
+    background: var(--surface-color);
+    box-shadow: 0 10px 26px rgba(17,24,39,0.08);
+    position: relative;
+    overflow: hidden;
+    transform-style: preserve-3d;
+}
+
+.dark-mode .skin-card {
+    box-shadow: 0 12px 30px rgba(0,0,0,0.28);
+    border-color: #374151;
+}
+
+.skin-card.selected {
+    border-color: var(--accent-color);
+    box-shadow: 0 14px 34px color-mix(in srgb, var(--accent-color) 22%, transparent);
+}
+
+.skin-card.premium::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+        radial-gradient(circle at 18% 18%, rgba(255,255,255,0.20), transparent 28%),
+        linear-gradient(135deg, rgba(255,215,128,0.20), transparent 45%, rgba(111,184,255,0.16));
+}
+
+.skin-flip-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 4;
+    width: 34px;
+    height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid color-mix(in srgb, var(--accent-color) 26%, transparent);
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--surface-color) 82%, var(--accent-color));
+    color: var(--accent-color);
+    cursor: pointer;
+    box-shadow: 0 8px 18px rgba(0,0,0,0.12);
+    transition: transform 0.24s ease, background-color 0.24s ease;
+}
+
+.skin-flip-btn:hover {
+    transform: rotate(20deg) scale(1.04);
+}
+
+.skin-card.is-flipped .skin-flip-btn {
+    transform: rotate(180deg);
+}
+
+.skin-preview {
+    position: relative;
+    min-height: 152px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    isolation: isolate;
+    perspective: 900px;
+}
+
+.skin-preview::after {
+    content: "";
+    position: absolute;
+    width: 80%;
+    height: 22%;
+    bottom: 12px;
+    left: 10%;
+    border-radius: 50%;
+    background: radial-gradient(ellipse, rgba(0,0,0,0.20), transparent 70%);
+    z-index: -1;
+}
+
+.skin-piece-pair {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    width: 100%;
+    backface-visibility: hidden;
+}
+
+.skin-flip-stage {
+    position: relative;
+    width: 100%;
+    min-height: 150px;
+    transform-style: preserve-3d;
+    transition: transform 0.55s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.skin-card.is-flipped .skin-flip-stage {
+    transform: rotateY(180deg);
+}
+
+.skin-piece-front {
+    transform: rotateY(0deg);
+}
+
+.skin-piece-back {
+    transform: rotateY(180deg);
+}
+
+.skin-piece-img {
+    width: min(118px, 50%);
+    aspect-ratio: 1 / 1;
+    object-fit: contain;
+    display: block;
+    filter: drop-shadow(0 12px 12px rgba(0,0,0,0.26));
+}
+
+.skin-piece-img:last-child {
+    margin-left: -18px;
+}
+
+.skin-copy {
+    min-width: 0;
+    position: relative;
+}
+
+.skin-topline {
+    min-width: 0;
+}
+
+.skin-name {
+    min-width: 0;
+    margin: 0;
+    font-size: 1.02rem;
+    line-height: 1.2;
+    font-weight: 800;
+    color: var(--text-color);
+}
+
+.skin-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    position: relative;
+}
+
+.skin-price {
+    flex: 1 1 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-width: 0;
+    color: var(--text-color);
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.skin-price-owned {
+    color: var(--secondary-text-color);
+}
+
+.skin-price .tc-coin-mark,
+.skin-price .rub-mark {
+    width: 22px;
+    height: 22px;
+}
+
+.skin-action-btn {
+    flex: 0 0 auto;
+    min-height: 40px;
+    padding: 0 13px;
+    border-radius: var(--border-radius);
+    border: 0;
+    background: var(--button-color);
+    color: #fff;
+    font-weight: 800;
+    cursor: pointer;
+    transition: transform 0.2s ease, background-color 0.2s ease, opacity 0.2s ease;
+}
+
+.skin-action-btn:hover {
+    transform: translateY(-1px);
+    background: var(--accent-color);
+}
+
+.skin-action-btn:disabled {
+    cursor: default;
+    opacity: 0.66;
+    transform: none;
+}
+
+.skin-action-btn.selected {
+    background: color-mix(in srgb, var(--accent-color) 20%, var(--surface-color));
+    color: var(--accent-color);
+}
+
+@media (max-width: 1120px) {
+    .skin-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 720px) {
+    .store-shell {
+        padding-top: 26px;
+    }
+
+    .skin-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .skin-card {
+        grid-template-columns: 120px 1fr;
+        grid-template-rows: auto auto;
+        align-items: center;
+    }
+
+    .skin-preview {
+        grid-row: 1 / 3;
+        min-height: 126px;
+    }
+
+    .skin-flip-stage {
+        min-height: 126px;
+    }
+
+    .skin-piece-img {
+        width: 98px;
+    }
+
+    .skin-piece-img:last-child {
+        margin-left: -20px;
+        margin-top: 0;
+    }
+}
+
+@media (max-width: 560px) {
+    .skin-card {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .skin-preview {
+        grid-row: auto;
+        min-height: clamp(118px, 35vw, 152px);
+    }
+
+    .skin-flip-stage {
+        min-height: clamp(118px, 35vw, 150px);
+    }
+
+    .skin-piece-pair {
+        flex-direction: row;
+    }
+
+    .skin-piece-img {
+        width: min(124px, 48%);
+    }
+
+    .skin-piece-img:last-child {
+        margin-left: -18px;
+        margin-top: 0;
+    }
+}
+
+@media (max-width: 430px) {
+    .store-head {
+        grid-template-columns: 42px minmax(0, 1fr) 42px;
+        gap: 8px;
+    }
+
+    .store-home-link span,
+    .store-inventory-link span {
+        display: none;
+    }
+
+    .store-home-link,
+    .store-inventory-link {
+        width: 42px;
+        min-width: 42px;
+        padding: 0;
+    }
+}
+
+@media (max-width: 300px) {
+    body.store-page.no-select:not(:has(.game-container)) > .header + main {
+        padding-top: 56px !important;
+    }
+
+    .store-shell {
+        padding-top: 18px;
+    }
+
+    .store-head {
+        grid-template-columns: 34px minmax(0, 1fr) 34px;
+        gap: 6px;
+    }
+
+    .store-head h1 {
+        font-size: clamp(1.2rem, 13vw, 1.65rem);
+        min-width: 0;
+    }
+
+    .store-home-link span,
+    .store-inventory-link span {
+        display: none;
+    }
+
+    .store-home-link,
+    .store-inventory-link {
+        width: 34px;
+        min-width: 34px;
+        min-height: 34px;
+        padding: 0;
+    }
+
+    .skin-card {
+        padding: 10px;
+        gap: 10px;
+    }
+
+    .skin-preview,
+    .skin-flip-stage {
+        min-height: 112px;
+    }
+
+    .skin-piece-img {
+        width: min(84px, 48%);
+    }
+
+    .skin-actions {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .skin-flip-btn {
+        width: 30px;
+        height: 30px;
+        top: 8px;
+        right: 8px;
+    }
+
+    .skin-action-btn {
+        width: 100%;
+        min-height: 38px;
+        padding: 0 8px;
+    }
+}
+
+@media (max-width: 170px) {
+    body.store-page.no-select:not(:has(.game-container)) > .header + main {
+        padding-top: 52px !important;
+    }
+
+    body.store-page.no-select:not(:has(.game-container)) .header {
+        --header-control-size: 24px;
+        --header-control-icon-size: 0.72rem;
+        height: 48px;
+        gap: 3px;
+        justify-content: center;
+        padding-inline: 3px;
+    }
+
+    body.store-page.no-select:not(:has(.game-container)) .logo {
+        display: none !important;
+    }
+
+    body.store-page.no-select:not(:has(.game-container)) .wallet-strip {
+        gap: 2px;
+        flex: 0 0 auto;
+    }
+
+    body.store-page.no-select:not(:has(.game-container)) .wallet-pill {
+        width: 24px;
+        min-width: 24px;
+        min-height: 24px;
+        justify-content: center;
+        padding: 0;
+    }
+
+    body.store-page.no-select:not(:has(.game-container)) .wallet-pill > span:last-child {
+        display: none;
+    }
+
+    body.store-page.no-select:not(:has(.game-container)) .wallet-pill .tc-coin-mark,
+    body.store-page.no-select:not(:has(.game-container)) .wallet-pill .rub-mark {
+        width: 16px;
+        height: 16px;
+        font-size: 0.66rem;
+    }
+
+    body.store-page.no-select:not(:has(.game-container)) .wallet-pill .tc-coin-mark svg {
+        width: 13px;
+        height: 13px;
+    }
+
+    body.store-page.no-select:not(:has(.game-container)) .header .theme-toggle,
+    body.store-page.no-select:not(:has(.game-container)) .header #theme-toggle,
+    body.store-page.no-select:not(:has(.game-container)) .header .notification-bell,
+    body.store-page.no-select:not(:has(.game-container)) .header .profile-link {
+        inline-size: var(--header-control-size) !important;
+        block-size: var(--header-control-size) !important;
+        min-inline-size: var(--header-control-size) !important;
+        min-block-size: var(--header-control-size) !important;
+        flex: 0 0 var(--header-control-size) !important;
+    }
+
+    body.store-page.no-select:not(:has(.game-container)) .nav {
+        gap: 3px;
+        flex: 0 0 auto;
+    }
+
+    .store-shell {
+        padding-left: 0;
+        padding-right: 0;
+        padding-top: 12px;
+    }
+
+    .store-head {
+        grid-template-columns: 30px minmax(0, 1fr) 30px;
+        gap: 4px;
+        margin-bottom: 14px;
+    }
+
+    .store-home-link,
+    .store-inventory-link {
+        width: 30px;
+        min-width: 30px;
+        min-height: 30px;
+    }
+
+    .store-head h1 {
+        font-size: 1.05rem;
+    }
+
+    .skin-card {
+        padding: 8px;
+    }
+
+    .skin-preview,
+    .skin-flip-stage {
+        min-height: 88px;
+    }
+
+    .skin-piece-img {
+        width: min(62px, 48%);
+    }
+
+    .skin-piece-img:last-child {
+        margin-left: -18px;
+    }
+
+    .skin-name {
+        font-size: 0.9rem;
+    }
+
+}

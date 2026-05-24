@@ -79,6 +79,97 @@ body.no-select textarea {
     font-weight: 700;
     color: var(--accent-color);
     white-space: nowrap;
+    text-decoration: none;
+    line-height: 1;
+    transition: color 0.2s ease;
+}
+
+.logo:hover {
+    color: color-mix(in srgb, var(--accent-color) 78%, var(--text-color));
+}
+
+.wallet-strip {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-color);
+    text-decoration: none;
+}
+
+.wallet-strip[hidden] {
+    display: none;
+}
+
+.wallet-pill {
+    min-height: 36px;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 5px 10px 5px 7px;
+    border: 1px solid color-mix(in srgb, var(--accent-color) 22%, transparent);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--surface-color) 88%, var(--accent-color));
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.45), 0 8px 18px rgba(17,24,39,0.08);
+    font-size: 0.95rem;
+    font-weight: 700;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.dark-mode .wallet-pill {
+    background: color-mix(in srgb, var(--surface-color) 86%, var(--accent-color));
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 8px 18px rgba(0,0,0,0.24);
+}
+
+.tc-coin-mark,
+.rub-mark {
+    width: 24px;
+    height: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    border-radius: 50%;
+}
+
+.tc-coin-mark {
+    background: radial-gradient(circle at 30% 25%, #ffffff 0%, #bfe0ff 32%, #4f8cff 72%, #1d4ed8 100%);
+    color: #fff;
+    box-shadow: inset 0 1px 2px rgba(255,255,255,0.75), inset 0 -2px 4px rgba(7,24,82,0.35);
+}
+
+.tc-coin-mark svg {
+    width: 20px;
+    height: 20px;
+}
+
+.tc-coin-mark circle {
+    fill: none;
+    stroke: rgba(255,255,255,0.8);
+    stroke-width: 1.8;
+}
+
+.tc-coin-mark path:first-of-type {
+    fill: rgba(255,255,255,0.22);
+    stroke: rgba(255,255,255,0.95);
+    stroke-width: 1.7;
+}
+
+.tc-coin-mark path:last-of-type {
+    fill: none;
+    stroke: rgba(255,255,255,0.78);
+    stroke-width: 1.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.rub-mark {
+    background: color-mix(in srgb, var(--accent-color) 16%, var(--surface-color));
+    border: 1px solid color-mix(in srgb, var(--accent-color) 34%, transparent);
+    color: var(--accent-color);
+    font-size: 1rem;
+    font-weight: 800;
 }
 
 .nav {
@@ -93,7 +184,7 @@ body.no-select textarea {
 .nav a {
     color: var(--text-color);
     text-decoration: none;
-    font-weight: 500;
+    font-weight: 800;
     transition: color 0.3s;
     flex: 0 0 auto;
 }
@@ -175,8 +266,7 @@ body.no-select textarea {
 }
 
 main {
-    padding-top: 60px;
-    padding: 40px 20px;
+    padding: 60px 20px 40px;
     min-height: calc(var(--vh) * 100 - 120px);
 }
 
@@ -208,5 +298,123 @@ input:autofill {
         width: 92vw;
         right: 4vw;
         max-height: 70vh;
+    }
+}
+
+@media (max-width: 520px) {
+    .header {
+        gap: 8px;
+        padding: 0 10px;
+    }
+
+    .logo {
+        font-size: 1.02rem;
+    }
+
+    .wallet-strip {
+        gap: 5px;
+    }
+
+    .wallet-pill {
+        min-height: 32px;
+        gap: 5px;
+        padding: 4px 8px 4px 5px;
+        font-size: 0.82rem;
+    }
+
+    .tc-coin-mark,
+    .rub-mark {
+        width: 22px;
+        height: 22px;
+    }
+
+    .tc-coin-mark svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    .nav {
+        gap: 8px;
+    }
+
+    .profile-link span {
+        display: none;
+    }
+}
+
+@media (max-width: 240px) {
+    .header {
+        height: 52px;
+        gap: 4px;
+        padding: 0 4px;
+    }
+
+    .logo {
+        width: 26px;
+        height: 26px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        background: color-mix(in srgb, var(--surface-color) 76%, var(--accent-color));
+        font-size: 0;
+    }
+
+    .logo::before {
+        content: "TC";
+        font-size: 0.62rem;
+        line-height: 1;
+        color: var(--accent-color);
+    }
+
+    #theme-toggle {
+        width: 24px;
+        min-width: 24px;
+        font-size: 0.9rem;
+    }
+
+    .wallet-strip {
+        gap: 3px;
+    }
+
+    .wallet-pill {
+        min-height: 26px;
+        gap: 3px;
+        padding: 3px 5px 3px 3px;
+        font-size: 0.7rem;
+    }
+
+    .tc-coin-mark,
+    .rub-mark {
+        width: 17px;
+        height: 17px;
+        font-size: 0.7rem;
+    }
+
+    .tc-coin-mark svg {
+        width: 14px;
+        height: 14px;
+    }
+
+    .nav {
+        gap: 4px;
+    }
+
+    .notification-bell,
+    .profile-link {
+        width: 24px;
+        height: 24px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    main {
+        padding: 52px 4px 28px;
+    }
+
+    .footer {
+        padding: 14px 4px;
+        font-size: 0.72rem;
     }
 }

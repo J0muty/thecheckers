@@ -1,7 +1,7 @@
 {% extends 'single_base.html' %}
 
 {% block board_script %}
-    <script src="/static/board/singleplayer.js" defer></script>
+    <script src="/static/board/singleplayer.js?v=20260524-store9" defer></script>
     <script src="/static/base/session_ws.js"></script>
     <script>
         window.globalSessionToken = "{{ request.session.session_token or '' }}";

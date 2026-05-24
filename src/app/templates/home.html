@@ -5,7 +5,7 @@
 {% block body_class %}no-select{% endblock %}
 
 {% block extra_css %}
-    <link rel="stylesheet" href="/static/home/home.css">
+    <link rel="stylesheet" href="/static/home/home.css?v=20260524-store">
     <link rel="stylesheet" href="/static/base/toast.css?v=20260523">
 {% endblock %}
 
@@ -14,6 +14,7 @@
         <div class="home-grid">
             <button id="singleBtn" class="btn" type="button">Одиночная игра</button>
             <button id="netBtn" class="btn" type="button">Сетевая игра</button>
+            <a href="{{ url_for('store_page') }}" class="btn shop-entry-btn">Магазин</a>
         </div>
         <div class="status-container" id="statusContainer">
             <div class="status-box" id="netStatus">
