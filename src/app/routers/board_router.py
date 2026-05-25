@@ -33,11 +33,10 @@ from src.base.redis import (
     resume_timers,
     get_board_state_at,
     get_board_players,
+    get_board_storage_keys,
     expire_board,
     DEFAULT_TIME,
     redis_client,
-    REDIS_KEY_PREFIX,
-    PLAYERS_KEY,
     set_draw_offer,
     get_draw_offer,
     mark_draw_offer_resolved,
@@ -282,10 +281,11 @@ async def api_get_board(board_id: str):
     players_raw = await get_board_players(board_id)
     if not players_raw:
         raise HTTPException(status_code=404)
-    board_key = f"{REDIS_KEY_PREFIX}:{board_id}:state"
-    timer_key = f"{REDIS_KEY_PREFIX}:{board_id}:timer"
-    history_key = f"{REDIS_KEY_PREFIX}:{board_id}:history"
-    chain_key = f"{REDIS_KEY_PREFIX}:{board_id}:chain"
+    storage_keys = await get_board_storage_keys(board_id)
+    board_key = storage_keys["state"]
+    timer_key = storage_keys["timer"]
+    history_key = storage_keys["history"]
+    chain_key = storage_keys["chain"]
     pipe = redis_client.pipeline()
     pipe.get(board_key)
     pipe.get(timer_key)
@@ -388,11 +388,12 @@ async def api_make_move(request: Request, board_id: str, req: MoveRequest):
     user_id = request.session.get("user_id")
     if user_id is None:
         raise HTTPException(status_code=401)
-    board_key = f"{REDIS_KEY_PREFIX}:{board_id}:state"
-    timer_key = f"{REDIS_KEY_PREFIX}:{board_id}:timer"
-    history_key = f"{REDIS_KEY_PREFIX}:{board_id}:history"
-    players_key = f"{REDIS_KEY_PREFIX}:{board_id}:{PLAYERS_KEY}"
-    chain_key = f"{REDIS_KEY_PREFIX}:{board_id}:chain"
+    storage_keys = await get_board_storage_keys(board_id)
+    board_key = storage_keys["state"]
+    timer_key = storage_keys["timer"]
+    history_key = storage_keys["history"]
+    players_key = storage_keys["players"]
+    chain_key = storage_keys["chain"]
     pipe = redis_client.pipeline()
     pipe.get(board_key)
     pipe.get(timer_key)
@@ -803,9 +804,9 @@ async def api_rematch_response(request: Request, board_id: str, action: str):
     if action == "accept":
         await mark_rematch_invite_resolved(board_id, "accepted")
         new_board_id = str(uuid.uuid4())
+        await set_board_players(new_board_id, players)
         await get_board_state(new_board_id)
         await get_current_timers(new_board_id)
-        await set_board_players(new_board_id, players)
         for uid in players.values():
             await assign_user_board(uid, new_board_id)
         await board_manager.broadcast(

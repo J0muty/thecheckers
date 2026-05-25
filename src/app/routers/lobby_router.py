@@ -143,9 +143,9 @@ async def api_lobby_start(request: Request, lobby_id: str):
         host_color: str(user_id),
         other_color: others[0],
     }
+    await set_board_players(board_id, players_map)
     await get_board_state(board_id)
     await get_current_timers(board_id)
-    await set_board_players(board_id, players_map)
     for uid in players_map.values():
         await assign_user_board(uid, board_id)
     await set_lobby_board(lobby_id, board_id)

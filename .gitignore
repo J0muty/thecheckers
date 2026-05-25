@@ -139,6 +139,7 @@ venv.bak/
 
 # Local runtime and bot arena reports
 src/logs/
+redis_backups/
 
 # Spyder project settings
 .spyderproject

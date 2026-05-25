@@ -175,7 +175,9 @@ async def _run_bot_turn(
 
 async def _log_game_result(game_id: str, status: str):
     user = await get_game_user(game_id)
-    if not user:
+    if not user or is_guest(str(user)):
+        game_difficulties.pop(game_id, None)
+        game_colors.pop(game_id, None)
         return
     color = game_colors.get(game_id, "white")
     if status == "draw":
@@ -261,9 +263,9 @@ async def api_single_start(request: Request, req: StartGame):
     game_id = str(uuid.uuid4())
     game_difficulties[game_id] = normalize_difficulty(req.difficulty)
     game_colors[game_id] = req.color
-    await get_board_state(game_id)
     if user_id:
         await assign_user_game(str(user_id), game_id)
+    await get_board_state(game_id)
     return JSONResponse({"game_id": game_id})
 
 
@@ -280,9 +282,9 @@ async def single_redirect(
     game_id = str(uuid.uuid4())
     game_difficulties[game_id] = normalize_difficulty(difficulty)
     game_colors[game_id] = color
-    await get_board_state(game_id)
     if user_id:
         await assign_user_game(str(user_id), game_id)
+    await get_board_state(game_id)
     url = request.url_for("single_page", game_id=game_id)
     return RedirectResponse(url)
 

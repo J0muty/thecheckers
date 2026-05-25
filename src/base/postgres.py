@@ -151,6 +151,12 @@ async def get_user_login(user_id: int, session: AsyncSession) -> str | None:
     return user.login if user else None
 
 @connect
+async def get_user_id_by_login(login: str, session: AsyncSession) -> int | None:
+    result = await session.execute(select(User).where(User.login == login))
+    user = result.scalar_one_or_none()
+    return user.id if user else None
+
+@connect
 async def get_user_email(user_id: int, session: AsyncSession) -> str | None:
     user = await session.get(User, user_id)
     return user.email if user else None

@@ -15,4 +15,5 @@ db_port = int(os.environ['DB_PORT'])
 redis_host = os.environ['REDIS_HOST']
 redis_port = int(os.environ['REDIS_PORT'])
 redis_db = int(os.environ['REDIS_DB'])
+redis_user = os.environ.get('REDIS_USER') or None
 redis_password = os.environ['REDIS_PASSWORD'] or None

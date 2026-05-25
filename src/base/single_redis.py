@@ -6,41 +6,55 @@ from typing import Any, List
 from .redis import redis_client
 from src.app.game.game_logic import Board, create_initial_board, rebuild_board_from_history
 from src.app.game.draw_logic import initial_draw_state
+from src.app.utils.guest import is_guest
+from src.base import redis_keys as keys
+from src.base.redis_names import user_folder, user_id_from_folder
 
-SINGLE_REDIS_KEY_PREFIX = "single_board"
 HISTORY_KEY_PREFIX = "history"
 TIMER_KEY_PREFIX = "timer"
 CHAIN_KEY_PREFIX = "chain"
 DRAW_STATE_KEY_PREFIX = "draw_state"
-USER_GAME_KEY_PREFIX = "single_user_game"
-GAME_USER_KEY_PREFIX = "single_game_user"
 DEFAULT_TIME = 600
+SINGLE_FIELDS = ("state", HISTORY_KEY_PREFIX, TIMER_KEY_PREFIX, CHAIN_KEY_PREFIX, DRAW_STATE_KEY_PREFIX)
 
 logger = logging.getLogger(__name__)
 
 
-def _state_key(game_id: str) -> str:
-    return f"{SINGLE_REDIS_KEY_PREFIX}:{game_id}:state"
-
-
-def _history_key(game_id: str) -> str:
-    return f"{SINGLE_REDIS_KEY_PREFIX}:{game_id}:{HISTORY_KEY_PREFIX}"
-
-
-def _timer_key(game_id: str) -> str:
-    return f"{SINGLE_REDIS_KEY_PREFIX}:{game_id}:{TIMER_KEY_PREFIX}"
-
-
-def _chain_key(game_id: str) -> str:
-    return f"{SINGLE_REDIS_KEY_PREFIX}:{game_id}:{CHAIN_KEY_PREFIX}"
-
-
-def _draw_key(game_id: str) -> str:
-    return f"{SINGLE_REDIS_KEY_PREFIX}:{game_id}:{DRAW_STATE_KEY_PREFIX}"
-
-
 async def _matching_keys(pattern: str) -> list[str]:
     return [key async for key in redis_client.scan_iter(match=pattern)]
+
+
+async def _move_key(src: str, dst: str) -> None:
+    if src == dst or not await redis_client.exists(src):
+        return
+    if await redis_client.exists(dst):
+        await redis_client.delete(src)
+        return
+    await redis_client.rename(src, dst)
+
+
+async def _move_game(game_id: str, old_owner: str, new_owner: str) -> None:
+    old_prefix = keys.single_game_key(old_owner, game_id, "")
+    new_prefix = keys.single_game_key(new_owner, game_id, "")
+    for key in await _matching_keys(f"{old_prefix}*"):
+        if key.startswith(old_prefix):
+            await _move_key(key, new_prefix + key[len(old_prefix):])
+
+
+async def _owner(game_id: str) -> str:
+    return await redis_client.get(keys.single_owner_key(game_id)) or keys.ORPHAN_USER
+
+
+async def _set_owner(game_id: str, owner: str) -> None:
+    owner_folder = await user_folder(owner)
+    old_owner = await _owner(game_id)
+    if old_owner != owner_folder:
+        await _move_game(game_id, old_owner, owner_folder)
+    await redis_client.set(keys.single_owner_key(game_id), owner_folder)
+
+
+async def _field_key(game_id: str, field: str) -> str:
+    return keys.single_game_key(await _owner(game_id), game_id, field)
 
 
 async def _history_type(key: str) -> str:
@@ -67,29 +81,30 @@ async def _migrate_history_to_list(key: str, history: list[str]) -> None:
 
 
 async def game_exists(game_id: str) -> bool:
-    return bool(await redis_client.exists(_state_key(game_id)))
+    return bool(await redis_client.exists(await _field_key(game_id, "state")))
 
 
 async def get_board_state(game_id: str, create: bool = True) -> Board | None:
-    raw = await redis_client.get(_state_key(game_id))
+    state_key = await _field_key(game_id, "state")
+    raw = await redis_client.get(state_key)
     if not raw:
         if not create:
             return None
         board = create_initial_board()
         pipe = redis_client.pipeline(transaction=True)
-        pipe.set(_state_key(game_id), json.dumps(board))
-        pipe.set(_draw_key(game_id), json.dumps(initial_draw_state(board)))
+        pipe.set(state_key, json.dumps(board))
+        pipe.set(await _field_key(game_id, DRAW_STATE_KEY_PREFIX), json.dumps(initial_draw_state(board)))
         await pipe.execute()
         return board
     return json.loads(raw)
 
 
 async def save_board_state(game_id: str, board: Board) -> None:
-    await redis_client.set(_state_key(game_id), json.dumps(board))
+    await redis_client.set(await _field_key(game_id, "state"), json.dumps(board))
 
 
 async def get_history(game_id: str) -> List[str]:
-    key = _history_key(game_id)
+    key = await _field_key(game_id, HISTORY_KEY_PREFIX)
     key_type = await _history_type(key)
     if key_type == "none":
         return []
@@ -102,7 +117,7 @@ async def get_history(game_id: str) -> List[str]:
 
 
 async def append_history(game_id: str, move: str) -> None:
-    key = _history_key(game_id)
+    key = await _field_key(game_id, HISTORY_KEY_PREFIX)
     key_type = await _history_type(key)
     if key_type == "string":
         history = await _read_history_string(key)
@@ -113,7 +128,8 @@ async def append_history(game_id: str, move: str) -> None:
 
 
 async def _read_timers(game_id: str, create: bool = True) -> dict[str, Any] | None:
-    raw = await redis_client.get(_timer_key(game_id))
+    key = await _field_key(game_id, TIMER_KEY_PREFIX)
+    raw = await redis_client.get(key)
     if not raw:
         if not create:
             return None
@@ -123,7 +139,7 @@ async def _read_timers(game_id: str, create: bool = True) -> dict[str, Any] | No
             "turn": "white",
             "last_ts": time.time(),
         }
-        await redis_client.set(_timer_key(game_id), json.dumps(timers))
+        await redis_client.set(key, json.dumps(timers))
         return timers
     return json.loads(raw)
 
@@ -149,7 +165,7 @@ async def apply_move_timer(game_id: str, player: str):
     timers[player] = max(0, timers[player] - elapsed)
     timers["turn"] = "black" if player == "white" else "white"
     timers["last_ts"] = now
-    await redis_client.set(_timer_key(game_id), json.dumps(timers))
+    await redis_client.set(await _field_key(game_id, TIMER_KEY_PREFIX), json.dumps(timers))
     return timers
 
 
@@ -159,7 +175,7 @@ async def apply_same_turn_timer(game_id: str, player: str):
     elapsed = now - timers["last_ts"]
     timers[player] = max(0, timers[player] - elapsed)
     timers["last_ts"] = now
-    await redis_client.set(_timer_key(game_id), json.dumps(timers))
+    await redis_client.set(await _field_key(game_id, TIMER_KEY_PREFIX), json.dumps(timers))
     return timers
 
 
@@ -174,17 +190,17 @@ async def freeze_timers(game_id: str):
         timers[turn] = max(0, timers[turn] - elapsed)
         timers["last_ts"] = now
     timers["turn"] = "stopped"
-    await redis_client.set(_timer_key(game_id), json.dumps(timers))
+    await redis_client.set(await _field_key(game_id, TIMER_KEY_PREFIX), json.dumps(timers))
     return timers
 
 
 async def get_chain_state(game_id: str) -> dict[str, Any] | None:
-    raw = await redis_client.get(_chain_key(game_id))
+    raw = await redis_client.get(await _field_key(game_id, CHAIN_KEY_PREFIX))
     return json.loads(raw) if raw else None
 
 
 async def save_chain_state(game_id: str, state: dict[str, Any] | None) -> None:
-    key = _chain_key(game_id)
+    key = await _field_key(game_id, CHAIN_KEY_PREFIX)
     if state is None:
         await redis_client.delete(key)
         return
@@ -192,16 +208,16 @@ async def save_chain_state(game_id: str, state: dict[str, Any] | None) -> None:
 
 
 async def clear_chain_state(game_id: str) -> None:
-    await redis_client.delete(_chain_key(game_id))
+    await redis_client.delete(await _field_key(game_id, CHAIN_KEY_PREFIX))
 
 
 async def get_draw_state(game_id: str) -> dict[str, Any] | None:
-    raw = await redis_client.get(_draw_key(game_id))
+    raw = await redis_client.get(await _field_key(game_id, DRAW_STATE_KEY_PREFIX))
     return json.loads(raw) if raw else None
 
 
 async def save_draw_state(game_id: str, state: dict[str, Any] | None) -> None:
-    key = _draw_key(game_id)
+    key = await _field_key(game_id, DRAW_STATE_KEY_PREFIX)
     if state is None:
         await redis_client.delete(key)
         return
@@ -209,7 +225,7 @@ async def save_draw_state(game_id: str, state: dict[str, Any] | None) -> None:
 
 
 async def clear_draw_state(game_id: str) -> None:
-    await redis_client.delete(_draw_key(game_id))
+    await redis_client.delete(await _field_key(game_id, DRAW_STATE_KEY_PREFIX))
 
 
 async def get_board_state_at(game_id: str, index: int) -> Board:
@@ -221,33 +237,38 @@ async def get_board_state_at(game_id: str, index: int) -> Board:
 
 
 async def cleanup_board(game_id: str):
-    keys = await _matching_keys(f"{SINGLE_REDIS_KEY_PREFIX}:{game_id}:*")
-    if keys:
-        await redis_client.delete(*keys)
-    user = await redis_client.get(f"{GAME_USER_KEY_PREFIX}:{game_id}")
+    owner = await _owner(game_id)
+    keys_to_delete = await _matching_keys(f"{keys.single_game_key(owner, game_id, '')}*")
+    user = await get_game_user(game_id)
     if user:
-        await redis_client.delete(f"{GAME_USER_KEY_PREFIX}:{game_id}")
-        await redis_client.delete(f"{USER_GAME_KEY_PREFIX}:{user}")
+        keys_to_delete.append(keys.single_active_key(await user_folder(user)))
+    keys_to_delete.append(keys.single_owner_key(game_id))
+    if keys_to_delete:
+        await redis_client.delete(*keys_to_delete)
 
 
 async def expire_board(game_id: str, delay: int = 300):
-    keys = await _matching_keys(f"{SINGLE_REDIS_KEY_PREFIX}:{game_id}:*")
-    for key in keys:
-        await redis_client.expire(key, delay)
-    user = await redis_client.get(f"{GAME_USER_KEY_PREFIX}:{game_id}")
+    owner = await _owner(game_id)
+    user = await get_game_user(game_id)
+    actual_delay = max(delay, keys.GUEST_FINISHED_GAME_TTL_SECONDS) if user and is_guest(str(user)) else delay
+    for key in await _matching_keys(f"{keys.single_game_key(owner, game_id, '')}*"):
+        await redis_client.expire(key, actual_delay)
+    await redis_client.expire(keys.single_owner_key(game_id), actual_delay)
     if user:
-        await redis_client.delete(f"{GAME_USER_KEY_PREFIX}:{game_id}")
-        await redis_client.delete(f"{USER_GAME_KEY_PREFIX}:{user}")
+        await redis_client.delete(keys.single_active_key(await user_folder(user)))
 
 
 async def assign_user_game(user_id: str, game_id: str):
-    await redis_client.set(f"{USER_GAME_KEY_PREFIX}:{user_id}", game_id)
-    await redis_client.set(f"{GAME_USER_KEY_PREFIX}:{game_id}", user_id)
+    await _set_owner(game_id, user_id)
+    await redis_client.set(keys.single_active_key(await user_folder(user_id)), game_id)
 
 
 async def get_user_game(user_id: str):
-    return await redis_client.get(f"{USER_GAME_KEY_PREFIX}:{user_id}")
+    return await redis_client.get(keys.single_active_key(await user_folder(user_id)))
 
 
 async def get_game_user(game_id: str):
-    return await redis_client.get(f"{GAME_USER_KEY_PREFIX}:{game_id}")
+    owner = await redis_client.get(keys.single_owner_key(game_id))
+    if owner == keys.ORPHAN_USER:
+        return None
+    return await user_id_from_folder(owner)

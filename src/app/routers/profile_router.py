@@ -30,8 +30,7 @@ from src.app.utils.session_manager import (
     delete_all_sessions,
 )
 from src.base.redis import (
-    redis_client,
-    CHAT_PREFIX,
+    delete_chat,
     get_user_chats,
     get_user_move_input_mode,
     set_user_move_input_mode,
@@ -285,7 +284,8 @@ async def api_delete_account(
     await delete_all_sessions(int(user_id))
     chat_ids = await get_user_chats(int(user_id))
     for cid in chat_ids:
-        await redis_client.delete(f"{CHAT_PREFIX}:{cid}")
+        a, b = map(int, cid.split(":"))
+        await delete_chat(a, b)
 
     lobby_id = await get_user_lobby(str(user_id))
     if lobby_id:

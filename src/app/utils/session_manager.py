@@ -6,9 +6,8 @@ from user_agents import parse
 from httpx import AsyncClient
 
 from src.base.redis import redis_client
-
-SESSION_PREFIX = "sess"
-USER_SESSIONS_PREFIX = "user_sess"
+from src.base import redis_keys as keys
+from src.base.redis_names import user_folder
 
 
 async def _get_city(ip: str) -> str:
@@ -48,49 +47,53 @@ async def create_session(user_id: int, user_agent: str, ip: str) -> str:
         "ip": ip,
         "city": city,
     }
-    await redis_client.set(f"{SESSION_PREFIX}:{token}", json.dumps(data))
-    await redis_client.sadd(f"{USER_SESSIONS_PREFIX}:{user_id}", token)
+    folder = await user_folder(user_id)
+    await redis_client.set(keys.session_key(folder, token), json.dumps(data))
+    await redis_client.sadd(keys.user_sessions_key(folder), token)
 
     await _session_update_manager().broadcast(str(user_id), json.dumps({"action": "update"}))
     return token
 
 
 async def delete_session(user_id: int, token: str) -> None:
-    await redis_client.delete(f"{SESSION_PREFIX}:{token}")
-    await redis_client.srem(f"{USER_SESSIONS_PREFIX}:{user_id}", token)
+    folder = await user_folder(user_id)
+    await redis_client.delete(keys.session_key(folder, token))
+    await redis_client.srem(keys.user_sessions_key(folder), token)
 
     await _session_kick_manager().broadcast(token, json.dumps({"action": "logout"}))
     await _session_update_manager().broadcast(str(user_id), json.dumps({"action": "update"}))
 
 
 async def delete_all_sessions(user_id: int, keep: Optional[str] = None) -> None:
-    tokens = await redis_client.smembers(f"{USER_SESSIONS_PREFIX}:{user_id}")
+    folder = await user_folder(user_id)
+    tokens = await redis_client.smembers(keys.user_sessions_key(folder))
     tokens = [t.decode() if isinstance(t, (bytes, bytearray)) else t for t in tokens]
 
     for t in tokens:
         if keep and t == keep:
             continue
-        await redis_client.delete(f"{SESSION_PREFIX}:{t}")
+        await redis_client.delete(keys.session_key(folder, t))
         await _session_kick_manager().broadcast(t, json.dumps({"action": "logout"}))
 
     if keep:
         to_remove = [t for t in tokens if t != keep]
         if to_remove:
-            await redis_client.srem(f"{USER_SESSIONS_PREFIX}:{user_id}", *to_remove)
-        await redis_client.sadd(f"{USER_SESSIONS_PREFIX}:{user_id}", keep)
+            await redis_client.srem(keys.user_sessions_key(folder), *to_remove)
+        await redis_client.sadd(keys.user_sessions_key(folder), keep)
     else:
         if tokens:
-            await redis_client.delete(f"{USER_SESSIONS_PREFIX}:{user_id}")
+            await redis_client.delete(keys.user_sessions_key(folder))
 
     await _session_update_manager().broadcast(str(user_id), json.dumps({"action": "update"}))
 
 
 async def get_sessions(user_id: int) -> List[Dict]:
-    tokens = await redis_client.smembers(f"{USER_SESSIONS_PREFIX}:{user_id}")
+    folder = await user_folder(user_id)
+    tokens = await redis_client.smembers(keys.user_sessions_key(folder))
     tokens = [t.decode() if isinstance(t, (bytes, bytearray)) else t for t in tokens]
     result = []
     for t in tokens:
-        raw = await redis_client.get(f"{SESSION_PREFIX}:{t}")
+        raw = await redis_client.get(keys.session_key(folder, t))
         if raw:
             d = json.loads(raw)
             d["id"] = t
@@ -101,7 +104,8 @@ async def get_sessions(user_id: int) -> List[Dict]:
 async def session_is_valid(user_id: int, token: str) -> bool:
     if not token:
         return False
-    in_set = await redis_client.sismember(f"{USER_SESSIONS_PREFIX}:{user_id}", token)
+    folder = await user_folder(user_id)
+    in_set = await redis_client.sismember(keys.user_sessions_key(folder), token)
     if not in_set:
         return False
-    return bool(await redis_client.exists(f"{SESSION_PREFIX}:{token}"))
+    return bool(await redis_client.exists(keys.session_key(folder, token)))

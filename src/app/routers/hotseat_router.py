@@ -103,7 +103,7 @@ async def _load_draw_state(board_id: str, history: list[str]) -> dict:
 
 async def _log_game_result(board_id: str, status: str):
     user = await get_game_user(board_id)
-    if not user:
+    if not user or is_guest(str(user)):
         return
     history = await get_history(board_id)
     saved = await save_recorded_game(
@@ -169,8 +169,8 @@ async def hotseat_redirect(request: Request):
         await cleanup_board(existing_board)
     await cancel_waiting(str(user_id))
     board_id = str(uuid.uuid4())
-    await get_board_state(board_id)
     await assign_user_hotseat(str(user_id), board_id)
+    await get_board_state(board_id)
     url = request.url_for("hotseat_page", board_id=board_id)
     return RedirectResponse(url)
 
