@@ -12,20 +12,24 @@
     </script>
     <link rel="stylesheet" href="/static/login/login.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="/static/base/toast.css?v=20260523">
+    <link rel="stylesheet" href="/static/base/toast.css">
     <link rel="stylesheet" href="/static/base/theme.css">
-    <link rel="stylesheet" href="/static/base/auth.css?v=20260525-autofill-align4">
+    <link rel="stylesheet" href="/static/base/auth.css">
 </head>
 <body class="auth-page auth-login">
+    <div class="auth-scene" aria-hidden="true"></div>
+    <a href="/" class="back-arrow" aria-label="На главную">
+        <i class="fa-solid fa-arrow-left"></i>
+    </a>
     <button id="theme-toggle" class="theme-toggle floating-theme" type="button" aria-label="Переключить тему">
         <i class="fa-solid fa-moon" id="theme-icon"></i>
     </button>
     <div class="page">
         <main class="auth-layout">
             <section class="container auth-card" aria-labelledby="auth-title">
-                <a href="/" class="back-arrow" aria-label="На главную">
-                    <i class="fa-solid fa-arrow-left"></i>
-                </a>
+                <div class="auth-emblem" aria-hidden="true">
+                    <i class="fa-solid fa-crown"></i>
+                </div>
                 {% if not require_2fa %}
                 <div class="auth-heading">
                     <h1 id="auth-title">Вход</h1>
@@ -33,10 +37,12 @@
                 <form action="/login" method="post" class="auth-form">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <div class="input-group">
+                        <i class="input-icon fa-solid fa-user" aria-hidden="true"></i>
                         <input type="text" id="login" name="login" placeholder=" " autocomplete="username" required>
                         <label for="login">Логин</label>
                     </div>
                     <div class="input-group has-toggle">
+                        <i class="input-icon fa-solid fa-lock" aria-hidden="true"></i>
                         <input type="password" id="password" name="password" placeholder=" " autocomplete="current-password" required>
                         <label for="password">Пароль</label>
                         <button class="toggle-password" type="button" aria-label="Показать пароль">
@@ -54,6 +60,7 @@
                 <form action="/login/2fa" method="post" class="auth-form">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <div class="input-group">
+                        <i class="input-icon fa-solid fa-shield-halved" aria-hidden="true"></i>
                         <input type="text" id="code" name="code" placeholder=" " maxlength="6" pattern="[0-9]{6}" inputmode="numeric" autocomplete="one-time-code" required>
                         <label for="code">6-значный код</label>
                     </div>
@@ -63,8 +70,8 @@
             </section>
         </main>
     </div>
-    <script src="/static/base/toast.js?v=20260523"></script>
-    <script src="/static/base/auth.js?v=20260525-autofill-align4"></script>
+    <script src="/static/base/toast.js"></script>
+    <script src="/static/base/auth.js"></script>
     <script src="/static/login/login.js"></script>
     <script src="/static/base/theme.js"></script>
     <script>

@@ -10,18 +10,18 @@
         }
     </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="/static/board/board.css?v=20260525-history-colors">
+    <link rel="stylesheet" href="/static/board/board.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="/static/base/toast.css?v=20260523">
+    <link rel="stylesheet" href="/static/base/toast.css">
     <link rel="stylesheet" href="/static/base/theme.css">
     <script>
         const boardId = "{{ game_id }}";
         const playerColor = "{{ player_color }}";
         window.globalSessionToken = "{{ request.session.session_token or '' }}";
     </script>
-    <script src="/static/board/replay.js?v=20260525-history-polish" defer></script>
+    <script src="/static/board/replay.js" defer></script>
 </head>
-<body>
+<body class="board-page">
     <button id="theme-toggle" class="theme-toggle floating-theme game-theme-toggle" type="button" aria-label="Переключить тему">
         <i class="fa-solid fa-moon" id="theme-icon"></i>
     </button>

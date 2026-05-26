@@ -9,6 +9,7 @@
 
 document.addEventListener('DOMContentLoaded', () => {
     showPendingToast();
+    initTapFocusCleanup();
     initThemeToggle();
     initWalletStrip();
     initNotificationPanel();
@@ -27,6 +28,26 @@ function showPendingToast() {
     } catch {}
 
     localStorage.removeItem('pendingToast');
+}
+
+function initTapFocusCleanup() {
+    const interactiveSelector = 'a, button, [role="button"], input[type="button"], input[type="submit"], input[type="reset"], label.color-option, .radio-card, .btn, .btn-icon, .theme-toggle, .nav-item, .menu-item';
+    const shouldCleanFocus = () => window.matchMedia('(max-width: 970px), (hover: none)').matches;
+
+    document.addEventListener('pointerup', event => {
+        if (!shouldCleanFocus() || event.pointerType === 'mouse') return;
+        const target = event.target.closest(interactiveSelector);
+        if (!target) return;
+        window.setTimeout(() => {
+            const focused = document.activeElement;
+            if (focused && focused !== document.body && focused.matches(interactiveSelector)) {
+                focused.blur();
+            }
+            if (target.matches(interactiveSelector) && typeof target.blur === 'function') {
+                target.blur();
+            }
+        }, 0);
+    }, true);
 }
 
 function initThemeToggle() {

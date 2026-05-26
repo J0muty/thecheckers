@@ -5,8 +5,8 @@
 {% block body_class %}no-select{% endblock %}
 
 {% block extra_css %}
-    <link rel="stylesheet" href="/static/home/home.css?v=20260524-store">
-    <link rel="stylesheet" href="/static/base/toast.css?v=20260523">
+    <link rel="stylesheet" href="/static/home/home.css">
+    <link rel="stylesheet" href="/static/base/toast.css">
 {% endblock %}
 
 {% block content %}
@@ -106,5 +106,5 @@
         window.globalSessionToken = "{{ request.session.session_token or '' }}";
     </script>
     <script src="/static/base/session_ws.js"></script>
-    <script src="/static/home/home.js?v=20260523-game-result"></script>
+    <script src="/static/home/home.js"></script>
 {% endblock %}

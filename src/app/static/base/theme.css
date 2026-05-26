@@ -2843,21 +2843,139 @@ body.no-select:not(:has(.game-container)) .header .profile-link i {
     }
 }
 
-/* Profile pages use dense panels; keep the page background flat so no global wash creates visible bands. */
-body:has(.profile-content) {
-    background: var(--background-color) !important;
-}
-
-body:has(.profile-content)::before {
-    content: none !important;
-    display: none !important;
-    background: none !important;
-}
-
 /* Home resume cards need to breathe on narrow screens. */
 body.no-select:not(:has(.game-container)):has(.home-wrapper) .status-box {
     flex-wrap: wrap;
     overflow: visible;
+}
+
+/* Unified non-board backdrop. Board pages stay flat so the game surface stays clean. */
+body:not(.auth-page):not(.board-page):not(:has(.game-container)) {
+    background:
+        radial-gradient(ellipse 58rem 34rem at 13% -8%, color-mix(in srgb, var(--accent-color) 18%, transparent), transparent 62%),
+        radial-gradient(ellipse 48rem 30rem at 92% 4%, color-mix(in srgb, var(--accent-2) 13%, transparent), transparent 66%),
+        radial-gradient(ellipse 42rem 26rem at 54% 108%, color-mix(in srgb, var(--accent-color) 12%, transparent), transparent 70%),
+        var(--page-bg) !important;
+    background-attachment: fixed;
+    isolation: isolate;
+}
+
+.dark-mode body:not(.auth-page):not(.board-page):not(:has(.game-container)) {
+    background:
+        radial-gradient(ellipse 60rem 36rem at 12% -8%, color-mix(in srgb, var(--accent-color) 22%, transparent), transparent 62%),
+        radial-gradient(ellipse 50rem 31rem at 91% 5%, color-mix(in srgb, var(--accent-2) 12%, transparent), transparent 68%),
+        radial-gradient(ellipse 44rem 28rem at 54% 110%, color-mix(in srgb, var(--accent-color) 16%, transparent), transparent 72%),
+        var(--page-bg) !important;
+}
+
+body:not(.auth-page):not(.board-page):not(:has(.game-container))::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.78;
+    background:
+        radial-gradient(circle at 16% 19%, color-mix(in srgb, var(--accent-color) 22%, transparent), transparent 22rem),
+        radial-gradient(circle at 80% 17%, color-mix(in srgb, var(--accent-2) 16%, transparent), transparent 24rem),
+        radial-gradient(circle at 52% 72%, color-mix(in srgb, var(--accent-color) 12%, transparent), transparent 30rem),
+        conic-gradient(from 210deg at 50% 42%, transparent 0deg, color-mix(in srgb, var(--accent-color) 11%, transparent) 66deg, transparent 126deg, color-mix(in srgb, var(--accent-2) 8%, transparent) 205deg, transparent 286deg);
+    filter: blur(34px) saturate(122%);
+    transform: scale(1.04);
+    mask-image: radial-gradient(ellipse at 50% 45%, #000 0 58%, transparent 88%);
+}
+
+.dark-mode body:not(.auth-page):not(.board-page):not(:has(.game-container))::before {
+    opacity: 0.68;
+    background:
+        radial-gradient(circle at 15% 18%, color-mix(in srgb, var(--accent-color) 26%, transparent), transparent 23rem),
+        radial-gradient(circle at 82% 17%, color-mix(in srgb, var(--accent-2) 14%, transparent), transparent 25rem),
+        radial-gradient(circle at 52% 76%, color-mix(in srgb, var(--accent-color) 18%, transparent), transparent 31rem),
+        conic-gradient(from 210deg at 50% 42%, transparent 0deg, color-mix(in srgb, var(--accent-color) 16%, transparent) 66deg, transparent 128deg, color-mix(in srgb, var(--accent-2) 10%, transparent) 206deg, transparent 288deg);
+}
+
+body:not(.auth-page):not(.board-page):not(:has(.game-container))::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.72;
+    background:
+        radial-gradient(ellipse 42rem 16rem at 50% 78%, color-mix(in srgb, var(--surface-solid) 24%, transparent), transparent 72%),
+        radial-gradient(ellipse at center, transparent 0 52%, rgba(15, 23, 42, 0.06) 100%);
+}
+
+.dark-mode body:not(.auth-page):not(.board-page):not(:has(.game-container))::after {
+    opacity: 0.76;
+    background:
+        radial-gradient(ellipse 42rem 16rem at 50% 78%, color-mix(in srgb, var(--accent-color) 8%, transparent), transparent 72%),
+        radial-gradient(ellipse at center, transparent 0 46%, rgba(0, 0, 0, 0.28) 100%);
+}
+
+body:not(.auth-page):not(.board-page):not(:has(.game-container)) > .header,
+body:not(.auth-page):not(.board-page):not(:has(.game-container)) > main,
+body:not(.auth-page):not(.board-page):not(:has(.game-container)) > .topbar,
+body:not(.auth-page):not(.board-page):not(:has(.game-container)) > .profile-content,
+body:not(.auth-page):not(.board-page):not(:has(.game-container)) > .lobby-wrapper,
+body:not(.auth-page):not(.board-page):not(:has(.game-container)) > .waiting-container,
+body:not(.auth-page):not(.board-page):not(:has(.game-container)) > .footer {
+    position: relative;
+    z-index: 1;
+}
+
+body:not(.auth-page):not(.board-page):not(:has(.game-container)) > .topbar {
+    z-index: 1200;
+}
+
+body:not(.auth-page):not(.board-page):not(:has(.game-container)) > .topbar + .sidebar {
+    z-index: 1100;
+}
+
+body.board-page,
+body:has(.game-container) {
+    background: var(--background-color) !important;
+}
+
+body.board-page::before,
+body.board-page::after,
+body:has(.game-container)::before {
+    content: none !important;
+    display: none !important;
+}
+
+body:has(.game-container)::after {
+    content: none !important;
+    display: none !important;
+}
+
+body:not(.auth-page):not(.board-page):not(:has(.game-container)):has(.home-wrapper) .home-wrapper {
+    min-height: calc(var(--vh) * 100 - 64px);
+}
+
+body:not(.auth-page):not(.board-page):not(:has(.game-container)):has(.home-wrapper) .home-grid {
+    position: relative;
+    padding: clamp(14px, 4vw, 22px);
+    border: 1px solid color-mix(in srgb, var(--accent-color) 28%, var(--border-color));
+    border-radius: 24px;
+    background:
+        linear-gradient(145deg, color-mix(in srgb, var(--surface-solid) 82%, transparent), color-mix(in srgb, var(--surface-muted) 74%, transparent));
+    box-shadow:
+        var(--shadow-md),
+        inset 0 1px 0 rgba(255, 255, 255, 0.18);
+    backdrop-filter: blur(20px) saturate(150%);
+}
+
+body:not(.auth-page):not(.board-page):not(:has(.game-container)):has(.home-wrapper) .home-grid .btn {
+    border: 1px solid color-mix(in srgb, var(--accent-color) 30%, transparent);
+    background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.16), transparent 34%),
+        linear-gradient(135deg, var(--button-color), var(--accent-color));
+    box-shadow:
+        0 16px 34px color-mix(in srgb, var(--button-color) 22%, transparent),
+        inset 0 1px 0 rgba(255, 255, 255, 0.24);
+    font-weight: 700;
+    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.18);
 }
 
 body.no-select:not(:has(.game-container)):has(.home-wrapper) .status-title {
@@ -2889,5 +3007,98 @@ body.no-select:not(:has(.game-container)):has(.home-wrapper) #lobbyStatus .statu
         flex-basis: calc(50% - 6px);
         min-width: 0;
         padding-inline: 8px;
+    }
+}
+
+@media (max-width: 970px), (hover: none) {
+    a,
+    button,
+    .btn,
+    .primary-btn,
+    .btn-icon,
+    .theme-toggle,
+    #theme-toggle,
+    .nav a,
+    .nav-item,
+    .menu-item,
+    .dropdown-item,
+    .radio-card,
+    .color-option,
+    .icon-btn,
+    .notification-bell,
+    .notification-close,
+    .toggle-password,
+    .file-btn,
+    .chat-form button,
+    .status-box button,
+    .history-controls button,
+    .btn-blue,
+    .btn-green,
+    .btn-red,
+    #cancelBtn,
+    .store-home-link,
+    .store-inventory-link,
+    .skin-flip-btn,
+    .skin-action-btn,
+    .logout-device,
+    .move-mode-option,
+    .preview-action,
+    .fab-btn,
+    button.invite-btn,
+    .toast-close {
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .btn:hover,
+    button:hover,
+    button.primary-btn:hover,
+    .primary-btn:hover,
+    .history-controls button:hover,
+    .status-box button:hover,
+    #cancelBtn:hover,
+    .chat-form button:hover,
+    .btn-blue:hover,
+    .btn-green:hover,
+    .btn-red:hover,
+    .file-btn:hover,
+    .store-home-link:hover,
+    .store-inventory-link:hover,
+    .skin-flip-btn:hover,
+    .skin-action-btn:hover,
+    .logout-device:hover,
+    .move-mode-option:hover,
+    .preview-action:hover,
+    .fab-btn:hover,
+    button.invite-btn:hover,
+    .toast-close:hover {
+        transform: none !important;
+        filter: none !important;
+        box-shadow: none !important;
+    }
+
+    .nav a:hover,
+    .theme-toggle:hover,
+    #theme-toggle:hover,
+    .btn-icon:hover,
+    .notification-bell:hover,
+    .notification-close:hover {
+        transform: none !important;
+        color: var(--text-color) !important;
+        border-color: var(--border-color) !important;
+    }
+
+    .nav-item:hover:not(.active),
+    .menu-item:hover:not(.active),
+    .dropdown-item:hover {
+        background: transparent !important;
+        border-color: transparent !important;
+        color: var(--text-color) !important;
+        transform: none !important;
+    }
+
+    .color-option:hover:not(:has(input:checked)),
+    .radio-card:hover:not(:has(input:checked)) {
+        transform: none !important;
+        border-color: var(--border-color) !important;
     }
 }
