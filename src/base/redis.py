@@ -31,10 +31,12 @@ DRAW_OFFER_KEY_PREFIX = "draw_offer"
 DRAW_STATE_KEY_PREFIX = "draw_state"
 DEFAULT_TIME = 600
 WAITING_TIMEOUT = 600
+GAME_FOUND_SOUND_TTL = 24 * 60 * 60
 CHAT_PREFIX = "users"
 LOBBY_CHAT_PREFIX = "lobby_chat"
 MOVE_INPUT_MODE_SETTING = "move_input_mode"
 MOVE_INPUT_MODES = {"click", "drag"}
+SOUNDS_ENABLED_SETTING = "sounds_enabled"
 MULTIPLAYER_FIELDS = (
     STATE_KEY,
     HISTORY_KEY_PREFIX,
@@ -110,6 +112,19 @@ def normalize_move_input_mode(mode: str | None) -> str:
     return mode if mode in MOVE_INPUT_MODES else "click"
 
 
+def normalize_boolean_setting(value: Any, default: bool = True) -> bool:
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return default
+    normalized = str(value).strip().lower()
+    if normalized in {"1", "true", "yes", "on", "enabled"}:
+        return True
+    if normalized in {"0", "false", "no", "off", "disabled"}:
+        return False
+    return default
+
+
 async def _user_setting_key(user_id: str | int, setting: str) -> str:
     return keys.user_setting_key(await user_folder(user_id), setting)
 
@@ -128,6 +143,10 @@ async def _hotseat_active_key(user_id: str | int) -> str:
 
 async def _waiting_since_key(user_id: str | int) -> str:
     return keys.waiting_since_key(await user_folder(user_id))
+
+
+async def _game_found_sound_key(user_id: str | int, board_id: str) -> str:
+    return keys.game_found_sound_key(await user_folder(user_id), board_id)
 
 
 async def _rematch_user_invite_key(user_id: str | int, board_id: str) -> str:
@@ -396,6 +415,22 @@ async def set_user_move_input_mode(user_id: str | int, mode: str | None) -> str:
     return normalized
 
 
+async def get_user_sound_enabled(user_id: str | int | None) -> bool:
+    if not user_id:
+        return True
+    raw = await redis_client.get(await _user_setting_key(user_id, SOUNDS_ENABLED_SETTING))
+    return normalize_boolean_setting(raw, default=True)
+
+
+async def set_user_sound_enabled(user_id: str | int, enabled: Any) -> bool:
+    normalized = normalize_boolean_setting(enabled, default=True)
+    await redis_client.set(
+        await _user_setting_key(user_id, SOUNDS_ENABLED_SETTING),
+        "1" if normalized else "0",
+    )
+    return normalized
+
+
 async def get_board_state_at(board_id: str, index: int) -> Board:
     history = await get_history(board_id)
     logger.info("Rebuilding board %s at step %d", board_id, index)
@@ -441,6 +476,20 @@ async def check_waiting(username: str):
     if await waiting_timed_out(username):
         return None, None
     return None, None
+
+
+async def claim_game_found_sound(user_id: str, board_id: str) -> bool:
+    key = await _game_found_sound_key(user_id, board_id)
+    claimed = bool(
+        await redis_client.set(
+            key,
+            "1",
+            ex=GAME_FOUND_SOUND_TTL,
+            nx=True,
+        )
+    )
+    logger.info("[sound] redis_claim_game_found_sound user=%s board=%s key=%s claimed=%s", user_id, board_id, key, claimed)
+    return claimed
 
 
 async def get_waiting_time(username: str):

@@ -383,6 +383,19 @@ body {
     transition: transform 0.2s ease, box-shadow 0.2s ease, background-blend-mode 0.2s ease;
     overflow: hidden;
     filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    user-select: none;
+    -webkit-user-drag: none;
+}
+
+.board-grid,
+.square,
+.piece,
+.checker-3d-img {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    user-select: none;
 }
 
 .board-grid.input-drag {
@@ -516,6 +529,7 @@ body {
     object-fit: contain;
     pointer-events: none;
     user-select: none;
+    -webkit-user-drag: none;
     transform: translateY(1.5%);
 }
 

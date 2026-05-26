@@ -26,15 +26,15 @@ body.auth-page {
     --auth-piece-light: #f8fafc;
     --auth-shadow: 0 34px 90px rgba(15, 23, 42, 0.16);
     --auth-scene-overlay:
-        linear-gradient(90deg, rgba(245, 248, 248, 0.08), transparent 26%, transparent 74%, rgba(245, 248, 248, 0.12)),
-        linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 38%, rgba(15, 159, 123, 0.09));
+        radial-gradient(ellipse 78rem 50rem at 8% 8%, rgba(245, 248, 248, 0.08) 0%, transparent 78%),
+        radial-gradient(ellipse 76rem 48rem at 94% 100%, rgba(15, 159, 123, 0.08) 0%, transparent 82%);
     --font-family: 'Rubik', Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     min-height: calc(var(--vh) * 100);
     overflow-x: hidden;
     background:
-        radial-gradient(circle at 18% 12%, rgba(15, 159, 123, 0.12), transparent 34rem),
-        radial-gradient(circle at 86% 18%, rgba(14, 165, 233, 0.1), transparent 28rem),
-        linear-gradient(135deg, #f8fafc 0%, #eef7f3 48%, #eef6ff 100%) !important;
+        radial-gradient(ellipse 84rem 58rem at 8% -14%, rgba(15, 159, 123, 0.10) 0%, transparent 78%),
+        radial-gradient(ellipse 72rem 48rem at 102% 2%, rgba(14, 165, 233, 0.07) 0%, transparent 80%),
+        var(--page-bg) !important;
     color: var(--text-color);
 }
 
@@ -74,13 +74,12 @@ html.dark-mode body.auth-page {
     --auth-piece-light: #edf2f4;
     --auth-shadow: 0 36px 96px rgba(0, 0, 0, 0.54);
     --auth-scene-overlay:
-        linear-gradient(90deg, rgba(3, 10, 12, 0.3), transparent 24%, transparent 76%, rgba(3, 10, 12, 0.32)),
-        linear-gradient(180deg, rgba(3, 10, 12, 0.16), transparent 32%, rgba(3, 10, 12, 0.2));
+        radial-gradient(ellipse 78rem 50rem at 8% 8%, rgba(3, 10, 12, 0.26) 0%, transparent 80%),
+        radial-gradient(ellipse 76rem 48rem at 94% 100%, rgba(3, 10, 12, 0.22) 0%, transparent 84%);
     background:
-        radial-gradient(circle at 48% 42%, rgba(20, 184, 166, 0.2), transparent 28rem),
-        radial-gradient(circle at 16% 12%, rgba(45, 212, 191, 0.12), transparent 28rem),
-        radial-gradient(circle at 88% 18%, rgba(56, 189, 248, 0.08), transparent 28rem),
-        linear-gradient(135deg, #071011 0%, #0d1418 44%, #101a1d 100%) !important;
+        radial-gradient(ellipse 84rem 58rem at 8% -14%, rgba(20, 184, 166, 0.14) 0%, transparent 78%),
+        radial-gradient(ellipse 72rem 48rem at 102% 2%, rgba(56, 189, 248, 0.06) 0%, transparent 82%),
+        var(--page-bg) !important;
 }
 
 html.dark-mode body.auth-login {

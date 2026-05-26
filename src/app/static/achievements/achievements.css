@@ -2,18 +2,29 @@ html,
 body {
     margin: 0;
     padding: 0;
-    height: 100%;
+    min-height: 100%;
     background-color: var(--background-color);
-    overflow-y: hidden;
+    overflow-y: auto;
     overflow-x: auto;
+}
+
+.profile-content {
+    display: block;
+    max-width: none;
+    min-height: auto;
+    padding: 80px 16px 40px;
+    overflow: visible;
 }
 
 .content {
     display: flex;
     flex-direction: column;
-    height: 100vh;
-    min-height: 0;
+    min-height: auto;
     min-width: 320px;
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .section-title {
@@ -44,17 +55,15 @@ body {
 }
 
 .achievements-scroll {
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto !important;
+    flex: 0 0 auto;
+    min-height: auto;
+    overflow-y: visible !important;
     overflow-x: hidden;
-    padding: 24px 24px 30px;
+    padding: 24px 24px 0;
     box-sizing: border-box;
     width: 100%;
     max-width: 1200px;
     margin: 0 auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-gutter: stable both-edges;
 }
 
 .achievements-list {
@@ -63,7 +72,7 @@ body {
     gap: 24px;
     width: 100%;
     box-sizing: border-box;
-    padding-bottom: clamp(90px, 12vh, 160px);
+    padding-bottom: 0;
 }
 
 .achievement-card {

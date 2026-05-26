@@ -126,6 +126,15 @@
                         </span>
                     </label>
                 </fieldset>
+                <label class="sound-toggle-option" for="site-sounds">
+                    <span class="mode-mark"><i class="fa-solid fa-volume-high"></i></span>
+                    <span>
+                        <strong>Звуки сайта</strong>
+                        <small>Поиск игры и итог партии.</small>
+                    </span>
+                    <input type="checkbox" name="site-sounds" id="site-sounds" {% if sound_enabled %}checked{% endif %}>
+                    <span class="toggle-switch" aria-hidden="true"></span>
+                </label>
             </article>
 
             <article class="settings-panel danger-panel">
@@ -198,6 +207,7 @@
 {% block extra_js %}
 <script>
     window.checkerMoveMode = {{ move_input_mode|default('click')|tojson }};
+    window.checkerSoundsEnabled = {{ sound_enabled|default(true)|tojson }};
 </script>
 <script src="/static/profile/profile.js"></script>
 <script src="/static/settings/settings.js"></script>

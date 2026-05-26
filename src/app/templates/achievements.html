@@ -1,9 +1,9 @@
 {% extends "profile_base.html" %}
 {% block title %}Достижения{% endblock %}
 {% block extra_css %}
-<link rel="stylesheet" href="/static/profile/profile.css"/>
-<link rel="stylesheet" href="/static/achievements/achievements.css"/>
-<link rel="stylesheet" href="/static/base/toast.css">
+<link rel="stylesheet" href="/static/profile/profile.css?v={{ static_v('profile/profile.css') }}"/>
+<link rel="stylesheet" href="/static/achievements/achievements.css?v={{ static_v('achievements/achievements.css') }}"/>
+<link rel="stylesheet" href="/static/base/toast.css?v={{ static_v('base/toast.css') }}">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
 {% endblock %}
 {% block content %}
@@ -21,6 +21,6 @@
 </div>
 {% endblock %}
 {% block extra_js %}
-<script src="/static/profile/profile.js"></script>
-<script src="/static/achievements/achievements.js"></script>
+<script src="/static/profile/profile.js?v={{ static_v('profile/profile.js') }}"></script>
+<script src="/static/achievements/achievements.js?v={{ static_v('achievements/achievements.js') }}"></script>
 {% endblock %}

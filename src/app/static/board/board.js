@@ -121,6 +121,28 @@ let rematchRequested = false;
 let locallyAnimatedMove = null;
 let updateQueue = Promise.resolve();
 
+window.CheckersSound?.preload(['victory', 'defeat', 'draw', 'checkerMove', 'checkerCapture', 'checkerPromotion']);
+
+function playGameResultSound(status) {
+    window.CheckersSound?.playResult(status, myColor, {
+        onceKey: `checkers:${boardId}:result:${status}`,
+    });
+}
+
+function isPromotionMove(piece, endRow) {
+    return piece === piece.toLowerCase() &&
+        ((piece === 'w' && endRow === 0) || (piece === 'b' && endRow === 7));
+}
+
+function playCheckerMoveSound(piece, endRow, capturedCount = 0) {
+    const name = capturedCount > 0
+        ? 'checkerCapture'
+        : isPromotionMove(piece, endRow) ? 'checkerPromotion' : 'checkerMove';
+    window.CheckersSound?.play(name, {
+        volume: name === 'checkerPromotion' ? 0.62 : 0.64,
+    });
+}
+
 function showModal(m) {
     m.classList.add('active');
 }
@@ -243,6 +265,8 @@ function formatMoveNotation(start, end) {
 
 function createPieceElement(piece, boardRow) {
     const el = document.createElement('div');
+    el.draggable = false;
+    el.addEventListener('dragstart', event => event.preventDefault());
     const owner = piece.toLowerCase() === 'w' ? 'white' : 'black';
     const isKing =
         piece === piece.toUpperCase() ||
@@ -396,6 +420,7 @@ async function animateMoveCoordinates(boardBefore, start, end) {
     if (!sourceCell || !targetCell || !sourcePiece) {
         boardState = boardAfter;
         renderBoard();
+        playCheckerMoveSound(piece, end[0], capturedPositions.length);
         return boardAfter;
     }
 
@@ -428,6 +453,7 @@ async function animateMoveCoordinates(boardBefore, start, end) {
     animatedPiece.remove();
     boardState = boardAfter;
     renderBoard();
+    playCheckerMoveSound(piece, end[0], capturedPositions.length);
     return boardAfter;
 }
 
@@ -576,7 +602,7 @@ async function autoMoveIfSingle() {
 }
 
 function isFinishedUpdate(data) {
-    return Boolean(data?.status || data?.timers?.turn === 'stopped');
+    return Boolean(data?.status);
 }
 
 function setGameActionsVisible(visible) {
@@ -655,6 +681,7 @@ async function handleUpdate(data) {
                 msg += ` (${delta > 0 ? '+' : ''}${delta} Elo)`;
             }
         }
+        playGameResultSound(data.status);
         resultText.textContent = msg;
         showModal(resultModal);
     } else if (finished) {

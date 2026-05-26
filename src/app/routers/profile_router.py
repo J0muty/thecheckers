@@ -1,4 +1,5 @@
 import json
+import logging
 from fastapi import Request, APIRouter, status, Form
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from src.settings.settings import templates
@@ -33,7 +34,9 @@ from src.base.redis import (
     delete_chat,
     get_user_chats,
     get_user_move_input_mode,
+    get_user_sound_enabled,
     set_user_move_input_mode,
+    set_user_sound_enabled,
 )
 from src.base.lobby_redis import (
     get_user_lobby,
@@ -45,11 +48,12 @@ from src.app.utils.totp import generate_secret, build_uri, verify_code
 from src.app.utils.guest import is_guest
 
 profile_router = APIRouter()
+sound_logger = logging.getLogger("thecheckers.sound")
 
 @profile_router.get("/profile", response_class=HTMLResponse, name="profile")
 async def profile(request: Request):
     user_id = request.session.get("user_id")
-    if not user_id:
+    if not user_id or is_guest(user_id):
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     username = await get_user_login(int(user_id))
     return templates.TemplateResponse(
@@ -161,12 +165,14 @@ async def settings(request: Request):
         return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
     info = await get_2fa_info(int(user_id))
     move_input_mode = await get_user_move_input_mode(user_id)
+    sound_enabled = await get_user_sound_enabled(user_id)
     return templates.TemplateResponse(
         "settings.html",
         {
             "request": request,
             "twofa_enabled": info["enabled"],
             "move_input_mode": move_input_mode,
+            "sound_enabled": sound_enabled,
         },
     )
 
@@ -193,6 +199,46 @@ async def api_set_move_input_mode(request: Request):
         requested_mode = form.get("mode")
     mode = await set_user_move_input_mode(user_id, requested_mode)
     return JSONResponse({"mode": mode})
+
+
+@profile_router.get("/api/settings/effects")
+@profile_router.get("/api/settings/sounds")
+async def api_get_sounds_enabled(request: Request):
+    user_id = request.session.get("user_id")
+    if not user_id or is_guest(user_id):
+        return JSONResponse({"error": "unauthorized"}, status_code=status.HTTP_401_UNAUTHORIZED)
+    enabled = await get_user_sound_enabled(user_id)
+    sound_logger.info(
+        "[sound] settings_get user=%s enabled=%s ua=%s",
+        user_id,
+        enabled,
+        request.headers.get("user-agent", ""),
+    )
+    return JSONResponse({"enabled": enabled})
+
+
+@profile_router.post("/api/settings/effects")
+@profile_router.post("/api/settings/sounds")
+async def api_set_sounds_enabled(request: Request):
+    user_id = request.session.get("user_id")
+    if not user_id or is_guest(user_id):
+        return JSONResponse({"error": "unauthorized"}, status_code=status.HTTP_401_UNAUTHORIZED)
+    try:
+        data = await request.json()
+        requested_enabled = data.get("enabled")
+    except Exception:
+        form = await request.form()
+        requested_enabled = form.get("enabled")
+    enabled = await set_user_sound_enabled(user_id, requested_enabled)
+    sound_logger.info(
+        "[sound] settings_set user=%s requested=%s enabled=%s ua=%s",
+        user_id,
+        requested_enabled,
+        enabled,
+        request.headers.get("user-agent", ""),
+    )
+    return JSONResponse({"enabled": enabled})
+
 
 @profile_router.get("/api/stats")
 async def api_stats(request: Request):

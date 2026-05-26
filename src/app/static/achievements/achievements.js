@@ -31,12 +31,6 @@ function createCard(data, unlocked) {
   return card;
 }
 
-function fixScrollHeight() {
-  const block = document.querySelector('.achievements-scroll');
-  const rect = block.getBoundingClientRect();
-  block.style.height = (window.innerHeight - rect.top - 30) + 'px';
-}
-
 async function loadAchievements() {
   const resp = await fetch('/api/achievements');
   if (!resp.ok) return { achievements: [], unlocked: [] };
@@ -74,10 +68,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  fixScrollHeight();
   handleResponsive();
   window.addEventListener('resize', () => {
-    fixScrollHeight();
     handleResponsive();
   });
 });

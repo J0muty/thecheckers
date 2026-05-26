@@ -1,10 +1,10 @@
 {% extends 'single_base.html' %}
 
 {% block board_script %}
-    <script src="/static/board/singleplayer.js" defer></script>
-    <script src="/static/base/session_ws.js"></script>
+    <script src="/static/board/singleplayer.js?v={{ static_v('board/singleplayer.js') }}" defer></script>
+    <script src="/static/base/session_ws.js?v={{ static_v('base/session_ws.js') }}"></script>
     <script>
         window.globalSessionToken = "{{ request.session.session_token or '' }}";
     </script>
-    <script src="/static/base/toast.js"></script>
+    <script src="/static/base/toast.js?v={{ static_v('base/toast.js') }}"></script>
 {% endblock %}

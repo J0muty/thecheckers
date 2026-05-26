@@ -27,14 +27,9 @@ body {
 }
 
 body:not(:has(.game-container))::before {
-    content: "";
-    position: fixed;
-    inset: 0;
-    z-index: -1;
-    pointer-events: none;
-    background:
-        radial-gradient(circle at 18% 10%, var(--bg-soft-1), transparent 30rem),
-        radial-gradient(circle at 82% 0%, var(--bg-soft-2), transparent 28rem);
+    content: none !important;
+    display: none !important;
+    background: none !important;
 }
 
 button,

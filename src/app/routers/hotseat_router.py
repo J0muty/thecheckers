@@ -19,6 +19,7 @@ from src.base.redis import (
     clear_user_hotseat,
     cancel_waiting,
     get_user_move_input_mode,
+    get_user_sound_enabled,
 )
 from src.base.hotseat_redis import (
     clear_chain_state,
@@ -186,8 +187,10 @@ async def hotseat_page(request: Request, board_id: str):
     if session_user and not finished:
         await assign_user_hotseat(str(session_user), board_id)
     move_input_mode = "click"
+    sound_enabled = True
     if session_user and not is_guest(session_user):
         move_input_mode = await get_user_move_input_mode(session_user)
+        sound_enabled = await get_user_sound_enabled(session_user)
     return templates.TemplateResponse(
         "hotseat.html",
         {
@@ -195,6 +198,7 @@ async def hotseat_page(request: Request, board_id: str):
             "board_id": board_id,
             "player_color": "",
             "move_input_mode": move_input_mode,
+            "sound_enabled": sound_enabled,
         },
     )
 

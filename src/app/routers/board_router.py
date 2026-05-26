@@ -51,6 +51,7 @@ from src.base.redis import (
     save_draw_state,
     clear_draw_state,
     get_user_move_input_mode,
+    get_user_sound_enabled,
 )
 from src.base.lobby_redis import clear_lobby_board
 from src.app.game.game_logic import (
@@ -262,8 +263,10 @@ async def board_page(request: Request, board_id: str):
         and str(players.get("black", "")).isdigit()
     )
     move_input_mode = "click"
+    sound_enabled = True
     if session_user and not is_guest(session_user):
         move_input_mode = await get_user_move_input_mode(session_user)
+        sound_enabled = await get_user_sound_enabled(session_user)
     return templates.TemplateResponse(
         "board.html",
         {
@@ -273,6 +276,7 @@ async def board_page(request: Request, board_id: str):
             "api_base": "/api",
             "ranked_game": ranked_game,
             "move_input_mode": move_input_mode,
+            "sound_enabled": sound_enabled,
         },
     )
 

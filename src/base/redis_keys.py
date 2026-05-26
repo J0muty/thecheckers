@@ -145,3 +145,7 @@ def waiting_queue_key(username: str) -> str:
 
 def waiting_since_key(username: str) -> str:
     return f"{user_root(username)}:games:multiplayer:online:waiting_since"
+
+
+def game_found_sound_key(user_id: str | int, board_id: str) -> str:
+    return f"{user_root(user_id)}:games:multiplayer:online:{board_id}:game_found_sound"

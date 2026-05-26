@@ -3,7 +3,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const confirmPass = document.getElementById('confirm-password');
     const toggles = document.querySelectorAll('.toggle-password');
     const moveModeInputs = document.querySelectorAll('input[name="move-mode"]');
+    const siteSoundsInput = document.getElementById('site-sounds');
     const MOVE_MODE_KEY = 'checkerMoveMode';
+    const SOUNDS_KEY = 'checkerSoundsEnabled';
 
     function normalizeMoveMode(mode) {
         return mode === 'drag' ? 'drag' : 'click';
@@ -35,6 +37,36 @@ document.addEventListener('DOMContentLoaded', () => {
         return applyMoveMode(data.mode);
     }
 
+    function normalizeSoundEnabled(value) {
+        return value !== false && value !== 'false' && value !== '0' && value !== 'off';
+    }
+
+    function applySoundEnabled(enabled) {
+        const nextEnabled = normalizeSoundEnabled(enabled);
+        window.checkerSoundsEnabled = nextEnabled;
+        try {
+            localStorage.setItem(SOUNDS_KEY, nextEnabled ? '1' : '0');
+        } catch (_) {}
+        if (siteSoundsInput) {
+            siteSoundsInput.checked = nextEnabled;
+        }
+        return nextEnabled;
+    }
+
+    async function saveSoundEnabled(enabled) {
+        const nextEnabled = normalizeSoundEnabled(enabled);
+        const res = await fetch('/api/settings/effects', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({enabled: nextEnabled}),
+        });
+        if (!res.ok) {
+            throw new Error('sound_setting_save_failed');
+        }
+        const data = await res.json();
+        return applySoundEnabled(data.enabled);
+    }
+
     if (moveModeInputs.length) {
         let currentMoveMode = applyMoveMode(window.checkerMoveMode);
         moveModeInputs.forEach(input => {
@@ -56,6 +88,30 @@ document.addEventListener('DOMContentLoaded', () => {
                     moveModeInputs.forEach(item => { item.disabled = false; });
                 }
             });
+        });
+    }
+
+    if (siteSoundsInput) {
+        let currentSoundEnabled = applySoundEnabled(window.checkerSoundsEnabled);
+        siteSoundsInput.addEventListener('change', async () => {
+            const previousSoundEnabled = currentSoundEnabled;
+            siteSoundsInput.disabled = true;
+            try {
+                currentSoundEnabled = await saveSoundEnabled(siteSoundsInput.checked);
+                if (typeof showNotification === 'function') {
+                    showNotification(
+                        currentSoundEnabled ? 'Звуки сайта включены' : 'Звуки сайта отключены',
+                        'success'
+                    );
+                }
+            } catch (error) {
+                currentSoundEnabled = applySoundEnabled(previousSoundEnabled);
+                if (typeof showNotification === 'function') {
+                    showNotification('Не удалось сохранить настройку звуков', 'error');
+                }
+            } finally {
+                siteSoundsInput.disabled = false;
+            }
         });
     }
 

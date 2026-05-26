@@ -101,6 +101,8 @@ function renderBoard() {
                 const piece = boardState[br][bc];
                 if (piece) {
                     const p = document.createElement('div');
+                    p.draggable = false;
+                    p.addEventListener('dragstart', event => event.preventDefault());
                     p.classList.add('piece', piece.toLowerCase() === 'w' ? 'white' : 'black');
                     if (piece === piece.toUpperCase()) {
                         p.classList.add('king');

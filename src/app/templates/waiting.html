@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Поиск соперника</title>
-    <link rel="icon" href="/static/base/favicon.svg" type="image/svg+xml">
+    <link rel="icon" href="/static/base/favicon.svg?v={{ static_v('base/favicon.svg') }}" type="image/svg+xml">
 
     <script>
         if (localStorage.theme === 'dark') {
@@ -13,9 +13,9 @@
     </script>
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="/static/waiting/waiting.css">
-    <link rel="stylesheet" href="/static/base/toast.css">
-    <link rel="stylesheet" href="/static/base/theme.css">
+    <link rel="stylesheet" href="/static/waiting/waiting.css?v={{ static_v('waiting/waiting.css') }}">
+    <link rel="stylesheet" href="/static/base/toast.css?v={{ static_v('base/toast.css') }}">
+    <link rel="stylesheet" href="/static/base/theme.css?v={{ static_v('base/theme.css') }}">
 </head>
 <body>
     <button id="theme-toggle" class="theme-toggle floating-theme" type="button" aria-label="Переключить тему">
@@ -31,12 +31,14 @@
 
     <script>
         window.userId = "{{ user_id }}";
+        window.checkerSoundsEnabled = {{ sound_enabled|default(true)|tojson }};
         window.globalSessionToken = "{{ request.session.session_token or '' }}";
     </script>
 
-    <script src="/static/waiting/waiting.js"></script>
-    <script src="/static/base/toast.js"></script>
-    <script src="/static/base/theme.js"></script>
-    <script src="/static/base/session_ws.js"></script>
+    <script src="/static/base/game-sounds.js?v={{ static_v('base/game-sounds.js') }}"></script>
+    <script src="/static/waiting/waiting.js?v={{ static_v('waiting/waiting.js') }}"></script>
+    <script src="/static/base/toast.js?v={{ static_v('base/toast.js') }}"></script>
+    <script src="/static/base/theme.js?v={{ static_v('base/theme.js') }}"></script>
+    <script src="/static/base/session_ws.js?v={{ static_v('base/session_ws.js') }}"></script>
 </body>
 </html>

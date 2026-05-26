@@ -72,7 +72,7 @@ if __name__ == "__main__":
     uvicorn.run(
         "main:app",
         host="127.0.0.1",
-        port=1337,
+        port=1338,
         reload=True,
         reload_dirs=["src"],
         reload_excludes=[".venv", ".git", "__pycache__"]

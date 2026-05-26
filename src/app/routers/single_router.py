@@ -43,7 +43,7 @@ from src.base.single_redis import (
     save_draw_state,
     clear_draw_state,
 )
-from src.base.redis import get_user_move_input_mode
+from src.base.redis import get_user_move_input_mode, get_user_sound_enabled
 from src.base.postgres import get_selected_checker_skins, record_game, save_recorded_game
 from src.app.achievements.bots import check_bot_achievements
 from src.app.game.bot_profiles import normalize_difficulty
@@ -300,8 +300,10 @@ async def single_page(request: Request, game_id: str):
     color = game_colors.get(game_id, "white")
     user_id = request.session.get("user_id")
     move_input_mode = "click"
+    sound_enabled = True
     if user_id and not is_guest(user_id):
         move_input_mode = await get_user_move_input_mode(user_id)
+        sound_enabled = await get_user_sound_enabled(user_id)
     return templates.TemplateResponse(
         "singleplayer.html",
         {
@@ -310,6 +312,7 @@ async def single_page(request: Request, game_id: str):
             "player_color": color or "",
             "difficulty": difficulty,
             "move_input_mode": move_input_mode,
+            "sound_enabled": sound_enabled,
         },
     )
 

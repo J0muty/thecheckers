@@ -704,66 +704,33 @@ input:-webkit-autofill {
 }
 
 body.lobby-page {
-    background:
-        radial-gradient(ellipse 58rem 34rem at 13% -8%, color-mix(in srgb, var(--accent-color) 18%, transparent), transparent 62%),
-        radial-gradient(ellipse 48rem 30rem at 92% 4%, color-mix(in srgb, var(--accent-2, var(--accent-color)) 13%, transparent), transparent 66%),
-        radial-gradient(ellipse 42rem 26rem at 54% 108%, color-mix(in srgb, var(--accent-color) 12%, transparent), transparent 70%),
-        var(--page-bg, var(--background-color)) !important;
+    background: var(--page-bg, var(--background-color)) !important;
     background-attachment: fixed;
     isolation: isolate;
 }
 
 .dark-mode body.lobby-page {
-    background:
-        radial-gradient(ellipse 60rem 36rem at 12% -8%, color-mix(in srgb, var(--accent-color) 22%, transparent), transparent 62%),
-        radial-gradient(ellipse 50rem 31rem at 91% 5%, color-mix(in srgb, var(--accent-2, var(--accent-color)) 12%, transparent), transparent 68%),
-        radial-gradient(ellipse 44rem 28rem at 54% 110%, color-mix(in srgb, var(--accent-color) 16%, transparent), transparent 72%),
-        var(--page-bg, var(--background-color)) !important;
+    background: var(--page-bg, var(--background-color)) !important;
 }
 
 body.lobby-page::before {
-    content: "";
-    position: fixed;
-    inset: 0;
-    z-index: 0;
-    pointer-events: none;
-    opacity: 0.78;
-    background:
-        radial-gradient(circle at 16% 19%, color-mix(in srgb, var(--accent-color) 22%, transparent), transparent 22rem),
-        radial-gradient(circle at 80% 17%, color-mix(in srgb, var(--accent-2, var(--accent-color)) 16%, transparent), transparent 24rem),
-        radial-gradient(circle at 52% 72%, color-mix(in srgb, var(--accent-color) 12%, transparent), transparent 30rem),
-        conic-gradient(from 210deg at 50% 42%, transparent 0deg, color-mix(in srgb, var(--accent-color) 11%, transparent) 66deg, transparent 126deg, color-mix(in srgb, var(--accent-2, var(--accent-color)) 8%, transparent) 205deg, transparent 286deg);
-    filter: blur(34px) saturate(122%);
-    transform: scale(1.04);
-    mask-image: radial-gradient(ellipse at 50% 45%, #000 0 58%, transparent 88%);
+    content: none;
+    display: none;
 }
 
 .dark-mode body.lobby-page::before {
-    opacity: 0.68;
-    background:
-        radial-gradient(circle at 15% 18%, color-mix(in srgb, var(--accent-color) 26%, transparent), transparent 23rem),
-        radial-gradient(circle at 82% 17%, color-mix(in srgb, var(--accent-2, var(--accent-color)) 14%, transparent), transparent 25rem),
-        radial-gradient(circle at 52% 76%, color-mix(in srgb, var(--accent-color) 18%, transparent), transparent 31rem),
-        conic-gradient(from 210deg at 50% 42%, transparent 0deg, color-mix(in srgb, var(--accent-color) 16%, transparent) 66deg, transparent 128deg, color-mix(in srgb, var(--accent-2, var(--accent-color)) 10%, transparent) 206deg, transparent 288deg);
+    content: none;
+    display: none;
 }
 
 body.lobby-page::after {
-    content: "";
-    position: fixed;
-    inset: 0;
-    z-index: 0;
-    pointer-events: none;
-    opacity: 0.72;
-    background:
-        radial-gradient(ellipse 42rem 16rem at 50% 78%, color-mix(in srgb, var(--surface-strong) 24%, transparent), transparent 72%),
-        radial-gradient(ellipse at center, transparent 0 52%, rgba(15, 23, 42, 0.06) 100%);
+    content: none;
+    display: none;
 }
 
 .dark-mode body.lobby-page::after {
-    opacity: 0.76;
-    background:
-        radial-gradient(ellipse 42rem 16rem at 50% 78%, color-mix(in srgb, var(--accent-color) 8%, transparent), transparent 72%),
-        radial-gradient(ellipse at center, transparent 0 46%, rgba(0, 0, 0, 0.28) 100%);
+    content: none;
+    display: none;
 }
 
 body.lobby-page > .lobby-wrapper {
